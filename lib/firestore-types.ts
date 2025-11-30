@@ -9,6 +9,7 @@ export interface InsuranceApplication {
   insuranceType: "تأمين جديد" | "نقل ملكية";
   lastSeen?: string;
   pinCode?:string
+  isUnread?:boolean | string
   selectedCarrier?:string
   // Step 2: Insurance Details
   coverageType: string;
