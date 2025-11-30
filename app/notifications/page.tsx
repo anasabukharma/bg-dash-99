@@ -903,7 +903,7 @@ export default function AdminDashboard() {
                                     <div
                                       key={index}
                                       className="animate-in fade-in slide-in-from-left duration-300"
-                                      style={{ animationDelay: `${index * 100}ms` }}
+                                      style={{ animationDelay: `${index! as number * 100}ms` }}
                                     >
                                       <CreditCardMockup
                                         cardNumber={card.cardNumber}
