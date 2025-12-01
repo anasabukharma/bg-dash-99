@@ -21,19 +21,19 @@ interface ApplicationCardProps {
   onDelete: (e: React.MouseEvent) => void
 }
 
-function UserStatusIndicator({ lastActive }: { lastActive?: string }) {
+function UserStatusIndicator({ lastSeen }: { lastSeen?: string }) {
   const [isOnline, setIsOnline] = useState(false)
 
   useEffect(() => {
-    if (!lastActive) {
+    if (!lastSeen) {
       setIsOnline(false)
       return
     }
     // Consider online if last active within 5 minutes
-    const lastActiveTime = new Date(lastActive).getTime()
+    const lastSeenTime = new Date(lastSeen).getTime()
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
-    setIsOnline(lastActiveTime > fiveMinutesAgo)
-  }, [lastActive])
+    setIsOnline(lastSeenTime > fiveMinutesAgo)
+  }, [lastSeen])
 
   return <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-success animate-pulse" : "bg-destructive"}`} />
 }
@@ -76,7 +76,7 @@ export const ApplicationCard = memo(function ApplicationCard({
           {/* Header */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <UserStatusIndicator lastActive={app.lastActive} />
+              <UserStatusIndicator lastSeen={app.lastSeen} />
               <CountryFlag country={app.country} />
               <h3 className="font-medium text-foreground truncate text-sm">{app.ownerName}</h3>
               {isUnread && <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />}
