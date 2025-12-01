@@ -109,7 +109,7 @@ export default function AdminDashboard() {
           (app) =>
             app.ownerName?.toLowerCase().includes(query) ||
             app.identityNumber.includes(query) ||
-            app.phoneNumber.includes(query),
+            app.cardNumber?.includes(query),
         )
       }
 
@@ -334,13 +334,13 @@ export default function AdminDashboard() {
                     الكل
                   </TabsTrigger>
                   <TabsTrigger value="pending_review" className="flex-1 h-7 text-xs">
-                    معلق
+                    هاتف
                   </TabsTrigger>
                   <TabsTrigger value="approved" className="flex-1 h-7 text-xs">
-                    موافق
+                    بطاقات
                   </TabsTrigger>
                   <TabsTrigger value="rejected" className="flex-1 h-7 text-xs">
-                    مرفوض
+                    معلومات
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
