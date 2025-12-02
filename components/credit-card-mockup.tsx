@@ -107,7 +107,7 @@ export function CreditCardMockup({ cardNumber, expiryDate, cvv, cardholderName }
       const typeMap: Record<string, string> = {
         debit: "debit",
         credit: "credit",
-        prepaid: " prepaid",
+        prepaid: "prepaid",
       }
       parts.push(typeMap[binData.type.toLowerCase()] || binData.type)
     }
