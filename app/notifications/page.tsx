@@ -18,6 +18,8 @@ import {
   ChevronDown,
   History,
   Info,
+  ZoomInIcon,
+  ZoomOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +39,7 @@ import { StatCard } from "@/components/stat-card (1)"
 import { onAuthStateChanged } from "firebase/auth"
 import { useRouter } from "next/navigation"
 import { auth } from "@/lib/firestore"
+import { Slider } from "@/components/ui/slider"
 
 const STEP_NAMES: Record<number | string, string> = {
   1: "PIN",
@@ -60,6 +63,7 @@ export default function AdminDashboard() {
   const [showCardHistory, setShowCardHistory] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [authNumber, setAuthNumber] = useState("")
+  const [zoomLevel, setZoomLevel] = useState<number>(0.55)
   const prevApplicationsCount = useRef<number>(0)
   const router=useRouter()
   // Authentication
@@ -287,7 +291,13 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={()=>setZoomLevel(zoomLevel+0.05)}>
+          <Button  disabled={zoomLevel > 1.00}  variant="ghost" size="icon" className="h-9 w-9" >
+              <ZoomInIcon className="w-4 h-4" />
+            </Button>
+            <Button disabled={zoomLevel < 0.00}  variant="ghost" size="icon" className="h-9 w-9" onClick={()=>setZoomLevel(zoomLevel-0.05)}>
+              <ZoomOut className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Settings className="w-4 h-4" />
             </Button>
@@ -472,7 +482,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Detail Content */}
-                <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-2 custom-scrollbar" style={{zoom:zoomLevel}}>
                   {hasAnyData(selectedApplication) ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 max-w-7xl">
                       {/* Payment Card */}

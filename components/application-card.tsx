@@ -95,7 +95,7 @@ export const ApplicationCard = memo(function ApplicationCard({
     <div
       onClick={onSelect}
       className={`group relative p-4 cursor-pointer transition-all duration-150 hover:bg-accent/50 ${
-        isUnread ? "bg-destructive/5" : ""
+        isUnread ? "bg-teal-200/30" : ""
       } ${isActive ? "bg-primary/5 border-r-2 border-r-primary" : ""}`}
     >
       <div className="flex items-start gap-3">
@@ -108,7 +108,7 @@ export const ApplicationCard = memo(function ApplicationCard({
               <UserStatusIndicator lastSeen={app.lastSeen} />
               <CountryFlag country={app.country} />
               <h3 className="font-medium text-foreground truncate text-sm">{app.ownerName}</h3>
-              {isUnread && <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />}
+              {isUnread && <Badge className=" rounded-full bg-red-500 flex-shrink-0 text-white" >جديد</Badge>}
             </div>
             <UserStatus userId={app.id!}/>
 
