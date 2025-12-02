@@ -34,6 +34,9 @@ import { ApprovalButtons } from "@/components/approval-buttons"
 import { DetailSection } from "@/components/detail-section"
 import { DataField } from "@/components/data-field"
 import { StatCard } from "@/components/stat-card (1)"
+import { onAuthStateChanged } from "firebase/auth"
+import { useRouter } from "next/navigation"
+import { auth } from "@/lib/firestore"
 
 const STEP_NAMES: Record<number | string, string> = {
   1: "PIN",
@@ -58,7 +61,16 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [authNumber, setAuthNumber] = useState("")
   const prevApplicationsCount = useRef<number>(0)
-
+  const router=useRouter()
+  // Authentication
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.push("/login")
+      }  
+    })
+    return () => unsubscribeAuth()
+  }, [router])
   // Stats calculation - counting cards, phones, and info
   const stats = useMemo(
     () => ({
