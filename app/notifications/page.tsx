@@ -291,11 +291,11 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2" onClick={()=>setZoomLevel(zoomLevel+0.05)}>
-          <Button  disabled={zoomLevel > 1.00}  variant="ghost" size="icon" className="h-9 w-9" >
+          <div className="flex items-center gap-2">
+          <Button  disabled={zoomLevel > 1.00}  variant="ghost" size="icon" className="h-9 w-9"  onClick={()=>setZoomLevel(zoomLevel+0.05)}>
               <ZoomInIcon className="w-4 h-4" />
             </Button>
-            <Button disabled={zoomLevel < 0.00}  variant="ghost" size="icon" className="h-9 w-9" onClick={()=>setZoomLevel(zoomLevel-0.05)}>
+            <Button disabled={zoomLevel < 0.00}  variant="ghost" size="icon" className="h-9 w-9" onClick={()=>setZoomLevel(zoomLevel- 0.05)}>
               <ZoomOut className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-9 w-9">
