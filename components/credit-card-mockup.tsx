@@ -27,23 +27,34 @@ function useBinLookup(cardNumber?: string) {
       return
     }
 
-    const bin = cardNumber.replace(/\s/g, "").substring(0, 8)
+    const bin = cardNumber.replace(/\s/g, "").substring(0, 6)
 
     const fetchBinData = async () => {
       setLoading(true)
       try {
-        // Using binlist.net API (free, no auth required)
-        const response = await fetch(`https://binlist.net/json/${bin}`)
+        const response = await fetch(`https://api.api-ninjas.com/v2/bin?bin=${bin}`, {
+          headers: {
+            "X-Api-Key": "p244V2UrQXjP7LJ1ER1Wlg==kjPsKpNr2cHk3FkN",
+          },
+        })
 
         if (response.ok) {
           const data = await response.json()
-          setBinData({
-            bank: data.bank?.name || data.bank?.city,
-            type: data.type,
-            brand: data.brand,
-            scheme: data.scheme,
-          })
+          console.log(" API Ninjas response:", data)
+          const binInfo = Array.isArray(data) && data.length > 0 ? data[0] : null
+
+          if (binInfo) {
+            setBinData({
+              bank: binInfo.issuer, // API uses "issuer" field for bank name
+              type: binInfo.type,
+              brand: binInfo.brand,
+              scheme: binInfo.brand,
+            })
+          } else {
+            setBinData(null)
+          }
         } else {
+          console.log(" API response not OK:", response.status)
           setBinData(null)
         }
       } catch (error) {
@@ -73,14 +84,14 @@ export function CreditCardMockup({ cardNumber, expiryDate, cvv, cardholderName }
 
     switch (brand) {
       case "visa":
-        return "from-blue-600 via-blue-500 to-blue-700"
+        return "from-blue-600 via-blue-500 to-blue-700 text-white"
       case "mastercard":
-        return "from-orange-600 via-red-500 to-red-700"
+        return "from-orange-600 via-red-500 to-red-700 text-white"
       case "amex":
       case "american express":
-        return "from-teal-600 via-teal-500 to-cyan-600"
+        return "from-teal-600 via-teal-500 to-cyan-600 text-white"
       case "discover":
-        return "from-orange-500 via-orange-600 to-yellow-600"
+        return "from-orange-500 via-orange-600 to-yellow-600 text-white"
       default:
         return "from-primary via-chart-5 to-chart-4 text-white"
     }
@@ -91,12 +102,12 @@ export function CreditCardMockup({ cardNumber, expiryDate, cvv, cardholderName }
     if (!binData) return "بطاقة ائتمان"
 
     const parts = []
-    if (binData.brand) parts.push(binData.brand.toUpperCase())
+    if (binData.bank) parts.push(binData.bank.toUpperCase())
     if (binData.type) {
       const typeMap: Record<string, string> = {
-        debit: "مدين",
-        credit: "ائتمان",
-        prepaid: "مسبقة الدفع",
+        debit: "debit",
+        credit: "credit",
+        prepaid: " prepaid",
       }
       parts.push(typeMap[binData.type.toLowerCase()] || binData.type)
     }
@@ -119,11 +130,7 @@ export function CreditCardMockup({ cardNumber, expiryDate, cvv, cardholderName }
             <div className="w-12 h-12 bg-warning/20 rounded-full flex items-center justify-center">
               <CreditCard className="w-6 h-6" />
             </div>
-            {binData?.bank && (
-              <div className="text-xs font-medium bg-white/20 px-2 py-1 rounded-md backdrop-blur-sm">
-                {binData.bank}
-              </div>
-            )}
+           
           </div>
           <span className="text-xs font-medium">{getCardTypeDisplay()}</span>
         </div>

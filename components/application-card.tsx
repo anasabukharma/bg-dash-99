@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { InsuranceApplication } from "@/lib/firestore-types"
+import { onValue, ref } from "firebase/database"
+import { database } from "@/lib/firestore"
 
 interface ApplicationCardProps {
   app: InsuranceApplication
@@ -47,7 +49,34 @@ function CountryFlag({ country }: { country?: string }) {
   }
   return <span className="text-sm">🌍</span>
 }
+function UserStatus({ userId }: { userId: string }) {
+  const [status, setStatus] = useState<"online" | "offline" | "unknown">("unknown")
 
+  useEffect(() => {
+    const userStatusRef = ref(database, `/status/${userId}`)
+    const unsubscribe = onValue(userStatusRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) {
+        setStatus(data.state === "online" ? "online" : "offline")
+      } else {
+        setStatus("unknown")
+      }
+    })
+    return () => unsubscribe()
+  }, [userId])
+
+  return (
+    <div
+      className={`h-3 w-3 rounded-full ${
+        status === "online"
+          ? "bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50"
+          : status === "offline"
+            ? "bg-gray-400"
+            : "bg-amber-400 animate-pulse"
+      }`}
+    />
+  )
+}
 export const ApplicationCard = memo(function ApplicationCard({
   app,
   isSelected,
@@ -81,6 +110,7 @@ export const ApplicationCard = memo(function ApplicationCard({
               <h3 className="font-medium text-foreground truncate text-sm">{app.ownerName}</h3>
               {isUnread && <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />}
             </div>
+            <UserStatus userId={app.id!}/>
 
             {/* Actions - visible on hover */}
             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
