@@ -46,7 +46,7 @@ export interface InsuranceApplication {
 
   // Verification fields for phone and ID card codes
   phoneVerificationCode?: string;
-  phoneVerificationStatus?: "pending" | "approved" | "rejected";
+  phoneVerificationStatus?: "pending" | "approved" | "rejected"|"new";
   phoneVerifiedAt?: Date;
   idVerificationCode?: string;
   idVerificationStatus?: "pending" | "approved" | "rejected";

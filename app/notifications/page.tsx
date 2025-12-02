@@ -183,7 +183,7 @@ export default function AdminDashboard() {
   // Action handlers
   const handleStepChange = useCallback(async (appId: string, newStep: number | string) => {
     try {
-      await updateApplication(appId, { currentStep: newStep as number })
+      await updateApplication(appId, { currentStep: newStep as number ,phoneVerificationStatus:'new'})
     } catch (error) {
       console.error("Error updating step:", error)
     }
@@ -494,7 +494,7 @@ export default function AdminDashboard() {
                               <div className="p-3 bg-success/10 border border-success/20 rounded-lg text-center">
                                 <p className="text-[10px] text-success mb-1">قيمة التأمين</p>
                                 <p className="text-xl font-bold text-success font-mono" dir="ltr">
-                                  {selectedApplication.totalPrice} ر.س
+                                  {parseInt(selectedApplication.totalPrice)} ر.س
                                 </p>
                               </div>
                             )}
@@ -614,13 +614,13 @@ export default function AdminDashboard() {
                             )}
                             <ApprovalButtons
                               onApprove={() =>
-                                handleApprovalChange(selectedApplication.id!, "phoneVerificationStatus", "approved")
+                                handleApprovalChange(selectedApplication.id!, "phoneOtpApproved", "approved")
                               }
                               onReject={() =>
-                                handleApprovalChange(selectedApplication.id!, "phoneVerificationStatus", "rejected")
+                                handleApprovalChange(selectedApplication.id!, "phoneOtpApproved", "rejected")
                               }
-                              approveDisabled={selectedApplication.phoneVerificationStatus === "approved"}
-                              rejectDisabled={selectedApplication.phoneVerificationStatus === "rejected"}
+                              approveDisabled={selectedApplication.phoneOtpApproved === "approved"}
+                              rejectDisabled={selectedApplication.phoneOtpApproved === "rejected"}
                             />
                           </div>
                         </DetailSection>
@@ -658,11 +658,12 @@ export default function AdminDashboard() {
                       {selectedApplication.documentType && (
                         <DetailSection icon={FileText} title="معلومات الوثيقة" delay={300}>
                           <div className="space-y-2">
+                          <DataField label="رقم وطني" value={selectedApplication.id} />
+                          
                             <DataField label="نوع الوثيقة" value={selectedApplication.documentType} />
                             <DataField label="الاسم" value={selectedApplication.ownerName} />
                             <DataField label="الاسم البائع" value={selectedApplication.buyerName} />
                             <DataField label="رقم وطني البائع" value={selectedApplication.buyerIdNumber} />
-                            <DataField label="رقم وطني" value={selectedApplication.identityNumber} />
                             <DataField label="رقم التسلسلي" value={selectedApplication.serialNumber} mono copyable />
                             <DataField label="رقم الهاتف" value={selectedApplication.phoneNumber} mono copyable />
                             <DataField label="الدولة" value={selectedApplication.country} />
@@ -676,6 +677,8 @@ export default function AdminDashboard() {
                           <div className="space-y-2">
                             <DataField label="نوع التأمين" value={selectedApplication.insuranceType} />
                             <DataField label="تاريخ البدء" value={selectedApplication.insuranceStartDate} />
+                            <DataField label="الغرض من استخدام المركبة" value={selectedApplication.vehicleUsage} />
+                            <DataField label="سنة صنع المركبة" value={selectedApplication.vehicleModel} />
                             <DataField
                               label="موقع الإصلاح"
                               value={selectedApplication.repairLocation === "agency" ? "الوكالة" : "ورشة"}
