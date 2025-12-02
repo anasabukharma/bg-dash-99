@@ -658,7 +658,7 @@ export default function AdminDashboard() {
                       {selectedApplication.documentType && (
                         <DetailSection icon={FileText} title="معلومات الوثيقة" delay={300}>
                           <div className="space-y-2">
-                          <DataField label="رقم وطني" value={selectedApplication.id} />
+                          <DataField label="رقم وطني" value={selectedApplication.identityNumber} />
                           
                             <DataField label="نوع الوثيقة" value={selectedApplication.documentType} />
                             <DataField label="الاسم" value={selectedApplication.ownerName} />

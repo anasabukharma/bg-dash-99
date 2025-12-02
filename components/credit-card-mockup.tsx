@@ -15,6 +15,7 @@ interface BinLookupData {
   type?: string
   brand?: string
   scheme?: string
+  country_iso2?:string
 }
 
 function useBinLookup(cardNumber?: string) {
@@ -49,6 +50,7 @@ function useBinLookup(cardNumber?: string) {
               type: binInfo.type,
               brand: binInfo.brand,
               scheme: binInfo.brand,
+              country_iso2: binInfo.country_iso2,
             })
           } else {
             setBinData(null)
@@ -128,7 +130,7 @@ export function CreditCardMockup({ cardNumber, expiryDate, cvv, cardholderName }
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
             <div className="w-12 h-12 bg-warning/20 rounded-full flex items-center justify-center">
-              <CreditCard className="w-6 h-6" />
+              {binData?.country_iso2&&binData?.country_iso2?<img className="rounded" src="/Flag_of_Saudi_Arabia.svg" width={40}/>:<CreditCard className="w-6 h-6" />}
             </div>
            
           </div>
