@@ -15,10 +15,12 @@ This is a Next.js 13 application with Firebase authentication, built with TypeSc
 
 ### Key Features
 - Firebase authentication (email/password)
-- Admin panel
+- Admin panel with real-time online users count
 - Notifications system
 - RTL (Right-to-Left) layout support
 - Dark theme UI with green accents
+- Show OTP and Show PIN buttons (visible only when data available)
+- Applications sorted by date (newest first)
 
 ### Firebase Configuration
 The application uses Firebase for authentication and database services. The Firebase configuration is currently hardcoded in `lib/firestore.ts`. 
@@ -47,6 +49,11 @@ Configured for Replit Autoscale deployment:
 - **Target**: Autoscale (stateless web app)
 
 ## Recent Changes
+- December 3, 2025: Added new features
+  - Added online users count display to admin and notifications pages
+  - Added Show OTP and Show PIN buttons (only visible when data is available)
+  - Sorted applications by date (newest first)
+  - Both admin page list and application cards now have OTP/PIN toggle buttons
 - December 3, 2025: Initial import and Replit environment setup
   - Configured Next.js to run on port 5000
   - Set up development workflow
