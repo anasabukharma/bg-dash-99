@@ -65,6 +65,8 @@ export interface InsuranceApplication {
   phoneOtp?:string
   buyerIdNumber?:string
   buyerName?:string
+  showOtp?: boolean
+  showPin?: boolean
 }
 
 export interface ChatMessage {

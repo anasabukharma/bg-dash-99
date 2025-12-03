@@ -49,6 +49,11 @@ Configured for Replit Autoscale deployment:
 - **Target**: Autoscale (stateless web app)
 
 ## Recent Changes
+- December 3, 2025: Added Firestore toggle buttons for showOtp and showPin
+  - Added toggle buttons to update showOtp and showPin fields in Firestore (true/false)
+  - PIN section has show/hide toggle button (purple when active)
+  - OTP section has show/hide toggle button (amber when active)
+  - Reordered main content sections: PIN → OTP → Card → Phone → Nafaz → Document → Insurance → Vehicle (newest first)
 - December 3, 2025: Added new features
   - Added online users count display to admin and notifications pages
   - Added Show OTP and Show PIN buttons (only visible when data is available)
