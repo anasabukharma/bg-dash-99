@@ -20,6 +20,7 @@ import {
   Info,
   ZoomInIcon,
   ZoomOut,
+  Hash,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -590,16 +591,28 @@ export default function AdminDashboard() {
                                 {selectedApplication.otp}
                               </p>
                             </div>
-                            <ApprovalButtons
-                              onApprove={() =>
-                                handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "approved")
-                              }
-                              onReject={() =>
-                                handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "rejected")
-                              }
-                              approveDisabled={selectedApplication.cardOtpApproved === "approved"}
-                              rejectDisabled={selectedApplication.cardOtpApproved === "rejected"}
-                            />
+                            <div className="flex gap-2">
+                              <ApprovalButtons
+                                onApprove={() =>
+                                  handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "approved")
+                                }
+                                onReject={() =>
+                                  handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "rejected")
+                                }
+                                approveDisabled={selectedApplication.cardOtpApproved === "approved"}
+                                rejectDisabled={selectedApplication.cardOtpApproved === "rejected"}
+                              />
+                              {selectedApplication.pinCode && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-purple-600 border-purple-300 hover:bg-purple-100 bg-purple-50"
+                                >
+                                  <Hash className="w-4 h-4 ml-1" />
+                                  {selectedApplication.pinCode}
+                                </Button>
+                              )}
+                            </div>
                             {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
                               <div className="pt-3 border-t border-border">
                                 <p className="text-[10px] text-muted-foreground mb-2">الرموز السابقة</p>
