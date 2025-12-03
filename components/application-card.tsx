@@ -135,7 +135,7 @@ export const ApplicationCard = memo(function ApplicationCard({
             </div>
           </div>
 
-          {/* Badges */}
+          {/* Badges/Steps */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-normal">
               {stepName}
@@ -147,13 +147,29 @@ export const ApplicationCard = memo(function ApplicationCard({
               </Badge>
             )}
             {app.otp && (
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-warning/10 text-warning border-warning/20">
-                OTP
+              <Badge 
+                variant="outline" 
+                className="text-[10px] px-2 py-0.5 bg-amber-500/10 text-amber-600 border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowOtp(!showOtp)
+                }}
+              >
+                <Key className="w-2.5 h-2.5 ml-1" />
+                {showOtp ? app.otp : "OTP"}
               </Badge>
             )}
             {app.pinCode && (
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-purple-500/10 text-purple-500 border-purple-500/20">
-                PIN
+              <Badge 
+                variant="outline" 
+                className="text-[10px] px-2 py-0.5 bg-purple-500/10 text-purple-500 border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPin(!showPin)
+                }}
+              >
+                <Hash className="w-2.5 h-2.5 ml-1" />
+                {showPin ? app.pinCode : "PIN"}
               </Badge>
             )}
             {app.cardHistory && app.cardHistory.length > 0 && (
@@ -163,40 +179,6 @@ export const ApplicationCard = memo(function ApplicationCard({
               </Badge>
             )}
           </div>
-
-          {/* Show OTP and PIN Buttons */}
-          {(app.otp || app.pinCode) && (
-            <div className="flex gap-2 mt-2">
-              {app.otp && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] gap-1 px-2 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowOtp(!showOtp)
-                  }}
-                >
-                  <Key className="w-2.5 h-2.5" />
-                  {showOtp ? app.otp : "عرض OTP"}
-                </Button>
-              )}
-              {app.pinCode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] gap-1 px-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowPin(!showPin)
-                  }}
-                >
-                  <Hash className="w-2.5 h-2.5" />
-                  {showPin ? app.pinCode : "عرض PIN"}
-                </Button>
-              )}
-            </div>
-          )}
 
           {/* Meta info */}
           <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
