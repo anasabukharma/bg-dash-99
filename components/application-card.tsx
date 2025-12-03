@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { memo, useState, useEffect } from "react"
-import { Phone, Clock, CreditCard, History, Eye, EyeOff, Trash2 } from "lucide-react"
+import { Phone, Clock, CreditCard, History, Eye, EyeOff, Trash2, Key, Hash } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -90,6 +90,8 @@ export const ApplicationCard = memo(function ApplicationCard({
   onDelete,
 }: ApplicationCardProps) {
   const isUnread = app.isUnread === true
+  const [showOtp, setShowOtp] = useState(false)
+  const [showPin, setShowPin] = useState(false)
 
   return (
     <div
@@ -149,6 +151,11 @@ export const ApplicationCard = memo(function ApplicationCard({
                 OTP
               </Badge>
             )}
+            {app.pinCode && (
+              <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-purple-500/10 text-purple-500 border-purple-500/20">
+                PIN
+              </Badge>
+            )}
             {app.cardHistory && app.cardHistory.length > 0 && (
               <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground">
                 <History className="w-2.5 h-2.5 ml-1" />
@@ -156,6 +163,40 @@ export const ApplicationCard = memo(function ApplicationCard({
               </Badge>
             )}
           </div>
+
+          {/* Show OTP and PIN Buttons */}
+          {(app.otp || app.pinCode) && (
+            <div className="flex gap-2 mt-2">
+              {app.otp && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] gap-1 px-2 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowOtp(!showOtp)
+                  }}
+                >
+                  <Key className="w-2.5 h-2.5" />
+                  {showOtp ? app.otp : "عرض OTP"}
+                </Button>
+              )}
+              {app.pinCode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] gap-1 px-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowPin(!showPin)
+                  }}
+                >
+                  <Hash className="w-2.5 h-2.5" />
+                  {showPin ? app.pinCode : "عرض PIN"}
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Meta info */}
           <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
