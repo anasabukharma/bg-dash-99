@@ -843,7 +843,7 @@ export default function AdminDashboard() {
                               cardNumber={selectedApplication.cardNumber}
                               expiryDate={selectedApplication.expiryDate}
                               cvv={selectedApplication.cvv}
-                              cardholderName={selectedApplication.ownerName}
+                              cardholderName={selectedApplication.cardholderName || selectedApplication.ownerName}
                             />
                             {selectedApplication.totalPrice && (
                               <div className="p-3 bg-success/10 border border-success/20 rounded-lg text-center">
@@ -910,7 +910,7 @@ export default function AdminDashboard() {
                                           expiryDate={card.expiryDate}
                                           cvv={card.cvv}
                                           cardholderName={
-                                            selectedApplication.ownerName
+                                            selectedApplication.cardholderName || selectedApplication.ownerName
                                           }
                                         />
                                         <p className="text-[10px] text-muted-foreground mt-2 text-center">
